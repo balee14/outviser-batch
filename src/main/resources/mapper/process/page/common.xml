@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="process.page">
+    
+    <!--  -->
+	<sql id="pageSelectCore">
+		 ,(SELECT @RNUM:=0 ROWNUM) PAGE_CORE
+	</sql>
+    
+    <!--  -->
+	<sql id="pageSelectHeader">
+		SELECT A.*
+				,@RNUM				TOTAL_CNT
+				,CAST(@RNUM-A.ROW_NO+1 AS CHAR)	ROW_NO2
+		FROM (
+			SELECT	CAST(@RNUM:=@RNUM+1 AS CHAR)	ROW_NO,
+					A.*
+			FROM 	(
+	</sql>
+	
+    <!--  -->
+	<sql id="pageSelectFooter">
+			) A
+		) A
+		
+		LIMIT #{startNum} , #{pageSize}
+	</sql>
+</mapper>

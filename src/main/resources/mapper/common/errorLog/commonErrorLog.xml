@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+	namespace="com.enliple.outviserbatch.common.service.errorLog.mapper.CommonErrorLogMapper">
+
+	<!-- 공통 에러 -->
+	<insert id="insertCmErrorLog" parameterType="dataMap">
+		INSERT INTO OV_ERROR_LOG (
+			ERR_STACKTRACE
+			, ERR_MESSAGE
+			, ERR_PARAM
+		) VALUES (
+			#{errStacktrace}
+			, #{errMessage}
+			, #{errParam}
+		)
+	</insert>
+
+</mapper>

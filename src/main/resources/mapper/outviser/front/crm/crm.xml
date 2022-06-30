@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.crm.mapper.CrmMapper">
+    
+    <!--  -->
+    <select id="checkRun" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.checkRun*/
+        SELECT  CASE WHEN COUNT(*) > 0 THEN
+                    'Y'
+                ELSE
+                    'N'
+                END                             AS RUN_YN
+            ,   CASE WHEN MIN(REWORK_YN) = 'Y' THEN
+                    'Y'
+                ELSE
+                    'N'
+                END                             AS REWORK_YN
+        FROM    OV_CRM_REPORT_LOG
+        WHERE   PARAMS = #{params}
+    </select>
+    
+    <!--  -->
+    <insert id="insertCrmLog" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.insertCrmLog*/
+        INSERT INTO OV_CRM_REPORT_LOG (
+                STATUS
+            ,   PARAMS
+        ) VALUES (
+                #{status}
+            ,   #{params}
+        )
+        <selectKey resultType="int" keyProperty="logRowid" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    
+    <update id="updateCrmLog" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.updateCrmLog*/
+        UPDATE  OV_CRM_REPORT_LOG
+        SET     END_DATE    = NOW()
+            ,   STATUS      = NVL(NULLIF(#{status}, ''), STATUS)
+            ,   SUCCESS_YN  = NVL(NULLIF(#{successYn}, ''), SUCCESS_YN)
+            ,   RESULT_MSG  = NVL(NULLIF(#{crmResultMsg}, ''), RESULT_MSG)
+            ,   ERROR_MSG   = SUBSTR(NVL(NULLIF(REPLACE(#{errorMsg}, "'", ''), ''), ERROR_MSG), 1, 1000)
+            ,   CHECK_YN    = NVL(NULLIF(#{checkYn}, ''), CHECK_YN)
+            ,   CHECK_DATE  = CASE WHEN NVL(NULLIF(#{checkYn}, ''), 'N') = 'Y' THEN NOW() ELSE CHECK_DATE END
+            ,   COMMENTS    = SUBSTR(NVL(NULLIF(#{comments}, ''), COMMENTS), 1, 1000)
+            ,   REWORK_YN   = NVL(NULLIF(#{reworkYn}, ''), REWORK_YN)
+        WHERE   ROWID = ${logRowid}
+    </update>
+    
+    <select id="selectCdpExtraAmountCsvPattern" parameterType="String" resultType="string">
+        /* com.enliple.outviserbatch.outviser.front.crm.mapper.selectCdpExtraAmountCsvPattern*/
+        SELECT	EXTRA_AMOUNT_FORMAT
+        FROM	OV_CDP_EXTRA_AMOUNT
+        WHERE	ROWID= NVL((SELECT ROWID
+                            FROM OV_CDP_EXTRA_AMOUNT
+                            WHERE ACCT_ADVER_ID = #{adverId}
+                                AND DEL_YN='N'
+                                 /** 유효성 검사*/
+                                AND REPLACE ( REPLACE( REPLACE(EXTRA_AMOUNT_FORMAT," ","") ,",,","ERROR"),",","") REGEXP ('^[0-9]+$') = 1
+                            ORDER BY ROWID DESC
+                            LIMIT 1), 1);
+    </select>
+    
+</mapper>

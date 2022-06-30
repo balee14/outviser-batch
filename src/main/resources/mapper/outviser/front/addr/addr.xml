@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.addr.mapper.AddrMapper">
+    
+    <!-- -->
+    <select id="selectExcelAddress" resultType="dataMap">
+        /*enliple.ibot.outviser.api.send.selectExcelAddress*/
+        SELECT  FN_DECRYPT(C.ADDR_CUSTMR_NM)        AS name
+            ,   FN_DECRYPT(C.ADDR_PHONE_NUM)        AS phoneNo
+            ,   FN_DECRYPT(C.ADDR_EMAIL)            AS email
+            ,   C.PARAM1                            AS var1
+            ,   C.PARAM2                            AS var2
+            ,   C.PARAM3                            AS var3
+            ,   C.PARAM4                            AS var4
+            ,   C.PARAM5                            AS var5
+            ,   C.PARAM6                            AS var6
+            ,   C.PARAM7                            AS var7
+            ,   C.PARAM8                            AS var8
+            ,   C.PARAM9                            AS var9
+            ,   C.PARAM10                           AS var10
+            ,   C.PARAM11                           AS var11
+            ,   C.PARAM12                           AS var12
+            ,   C.PARAM13                           AS var13
+            ,   C.PARAM14                           AS var14
+            ,   C.PARAM15                           AS var15
+            ,   C.PARAM16                           AS var16
+            ,   C.PARAM17                           AS var17
+            ,   C.PARAM18                           AS var18
+            ,   C.PARAM19                           AS var19
+            ,   C.PARAM20                           AS var20
+        FROM    OV_REG_CAMPAIGN_MST A
+            ,   OV_ADDR_GRP         B
+            ,   OV_ADDR_DTL         C
+        WHERE   A.ACCT_ROWID = ${sessionUserRowId}
+        AND     A.ROWID = ${campRowid}
+        AND     A.ACCT_ROWID = B.ACCT_ROWID
+        AND     A.ACCT_ROWID = C.ACCT_ROWID
+        AND     A.ADDR_GRP_ROWID = B.ROWID
+        AND     B.ROWID = C.ADDR_GRP_ROWID
+    </select>
+
+    <select id="selectSendApiAddress" resultType="dataMap" parameterType="dataMap">
+        /*enliple.ibot.outviser.api.send.selectSendApiAddress*/
+        UPDATE OV_SEND_API_LOG
+        SET    SEND_YN = 'Y'
+            ,  UPDATE_DATE = NOW()
+        WHERE  ROWID = ${sendApiRowId}
+        ;
+
+        SELECT   FN_DECRYPT(ADDR_CUSTMR_NM)        AS name
+             ,   FN_DECRYPT(ADDR_PHONE_NUM)        AS phoneNo
+             ,   FN_DECRYPT(ADDR_EMAIL)            AS email
+             ,   PARAM1                            AS var1
+             ,   PARAM2                            AS var2
+             ,   PARAM3                            AS var3
+             ,   PARAM4                            AS var4
+             ,   PARAM5                            AS var5
+             ,   PARAM6                            AS var6
+             ,   PARAM7                            AS var7
+             ,   PARAM8                            AS var8
+             ,   PARAM9                            AS var9
+             ,   PARAM10                           AS var10
+             ,   PARAM11                           AS var11
+             ,   PARAM12                           AS var12
+             ,   PARAM13                           AS var13
+             ,   PARAM14                           AS var14
+             ,   PARAM15                           AS var15
+             ,   PARAM16                           AS var16
+             ,   PARAM17                           AS var17
+             ,   PARAM18                           AS var18
+             ,   PARAM19                           AS var19
+             ,   PARAM20                           AS var20
+        FROM     OV_SEND_API_LOG
+        WHERE    ROWID = ${sendApiRowId}
+        ;
+    </select>
+</mapper>

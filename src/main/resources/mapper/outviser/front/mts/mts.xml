@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.mts.mapper.MtsMapper">
+
+    <sql id="limited">
+        <if test="startLimit != null and endLimit != null">
+            LIMIT #{startLimit}, #{endLimit}
+        </if>
+    </sql>
+
+    <insert id="insertAtalk" parameterType="java.util.Map">
+        INSERT INTO MTS_ATALK_MSG${mtsTableNo} (
+                TRAN_SENDER_KEY
+            ,   TRAN_TMPL_CD
+            ,   TRAN_CALLBACK
+            ,   TRAN_PHONE
+            ,   TRAN_SUBJECT
+            ,   TRAN_MSG
+            ,   TRAN_DATE
+            ,   TRAN_TYPE
+            ,   TRAN_STATUS
+            ,   TRAN_REPLACE_TYPE
+            ,   TRAN_REPLACE_MSG
+            ,   TRAN_BUTTON
+            ,   TRAN_ETC1
+            ,   TRAN_ETC2
+            ,   TRAN_ETC3
+            ,   TRAN_ETC4
+            ,   TRAN_TITLE
+            ,   TRAN_ID
+        )
+        SELECT  #{tranSenderKey}
+            ,   #{tranTmplCd}
+            ,   REQ_CALLBACK
+            ,   REQ_PHONE_NO
+            ,   REQ_REP_SUBJECT
+            ,   REQ_MESSAGE
+            ,   REQ_CREATE_DATE
+            ,   REQ_TRAN_TYPE
+            ,   '1'
+            ,   REQ_REP_TYPE
+            ,   REQ_REP_MESSAGE
+            ,   REQ_BUTTON
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ROWID
+            ,   REQ_UUID
+            ,   REQ_SUBJECT
+            ,   #{mtsTest}
+        FROM    OV_REQUEST_SEND
+        WHERE   EXE_HST_ROWID = ${exeRunHstRowid}
+        AND     ACCT_ROWID = ${sessionUserRowId}
+        AND     CAMP_ROWID = ${campRowid}
+        AND     TMP_DTL_ROWID = ${tmpDtlRowid}
+        AND     REQ_UUID = #{uuid}
+        <include refid="limited" />
+    </insert>
+
+    <insert id="insertFtalk" parameterType="java.util.Map">
+        INSERT INTO MTS_FTALK_MSG${mtsTableNo} (
+                TRAN_SENDER_KEY
+            ,   TRAN_CALLBACK
+            ,   TRAN_PHONE
+            ,   TRAN_SUBJECT
+            ,   TRAN_MSG
+            ,   TRAN_DATE
+            ,   TRAN_TYPE
+            ,   TRAN_STATUS
+            ,   TRAN_REPLACE_TYPE
+            ,   TRAN_REPLACE_MSG
+            ,   TRAN_BUTTON
+            ,	TRAN_IMG_LINK
+            ,   TRAN_ETC1
+            ,   TRAN_ETC2
+            ,   TRAN_ETC3
+            ,   TRAN_ETC4
+            ,   TRAN_IMG_FLAG
+            ,   TRAN_IMG_KEY
+            ,   TRAN_ID
+        )
+        SELECT  #{tranSenderKey}
+            ,   REQ_CALLBACK
+            ,   REQ_PHONE_NO
+            ,   IF(REQ_REP_TYPE != 'N', REQ_REP_SUBJECT, REQ_SUBJECT)
+            ,   REQ_MESSAGE
+            ,   REQ_CREATE_DATE
+            ,   REQ_TRAN_TYPE
+            ,   '1'
+            ,   REQ_REP_TYPE
+            ,   REQ_REP_MESSAGE
+            ,   REQ_BUTTON
+            ,	REQ_IMG_LINK
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ROWID
+            ,   REQ_UUID
+            ,   #{tmpDtlAttachYn}
+            ,   #{tranPr}
+            ,   #{mtsTest}
+        FROM    OV_REQUEST_SEND
+        WHERE   EXE_HST_ROWID = ${exeRunHstRowid}
+        AND     ACCT_ROWID = ${sessionUserRowId}
+        AND     CAMP_ROWID = ${campRowid}
+        AND     TMP_DTL_ROWID = ${tmpDtlRowid}
+        AND     REQ_UUID = #{uuid}
+        <include refid="limited" />
+    </insert>   
+
+    <insert id="insertFtalkFile" parameterType="java.util.Map">
+        INSERT INTO MTS_FTALK_CONTENTS${mtsTableNo} (TRAN_PR, CONTENT_SEQ, CONTENT_TYPE, CONTENT_NAME, CONTENT_SVC, TRAN_LOG)
+            SELECT  A.TRAN_PR                                                   AS TRAN_PR
+                ,   ROW_NUMBER() OVER(PARTITION BY A.TRAN_PR ORDER BY B.ROWID)  AS CONTENT_SEQ
+                ,   'IMG'                                                       AS CONTENT_TYPE
+                ,   B.TMP_ATT_FILEPATH                                          AS CONTENT_NAME
+                ,   'ALL'                                                       AS CONTENT_SVC
+                ,   'N'                                                         AS TRAN_LOG
+            FROM    MTS_FTALK_MSG${mtsTableNo} A
+                ,   OV_TEMPLATE_ATT     B
+            WHERE   A.TRAN_ETC4 = #{uuid}
+            AND     B.TMP_DTL_ROWID = ${tmpDtlRowid}
+    </insert>
+
+    <insert id="insertFtalkFileNew" parameterType="java.util.Map" useGeneratedKeys="true" keyProperty="TRAN_PR" keyColumn="TRAN_PR">
+        INSERT INTO MTS_FTALK_CONTENTS${mtsTableNo} (CONTENT_SEQ, CONTENT_TYPE, CONTENT_NAME, CONTENT_SVC, TRAN_LOG)
+        SELECT  ROW_NUMBER() OVER(PARTITION BY ROWID)  AS CONTENT_SEQ
+                ,   'IMG'                              AS CONTENT_TYPE
+                ,   TMP_ATT_FILEPATH                   AS CONTENT_NAME
+                ,   'ALL'                              AS CONTENT_SVC
+                ,   'N'                                AS TRAN_LOG
+        FROM    OV_TEMPLATE_ATT
+        WHERE   TMP_DTL_ROWID = ${tmpDtlRowid}
+    </insert>
+
+    <insert id="insertSms" parameterType="java.util.Map">
+        INSERT INTO MTS_SMS_MSG${mtsTableNo} (
+                TRAN_PHONE
+            ,   TRAN_CALLBACK
+            ,   TRAN_MSG
+            ,   TRAN_DATE
+            ,   TRAN_TYPE
+            ,   TRAN_STATUS
+            ,   TRAN_ETC1
+            ,   TRAN_ETC2
+            ,   TRAN_ETC3
+            ,   TRAN_ETC4
+            ,   TRAN_ID
+        ) 
+        SELECT  REQ_PHONE_NO
+            ,   REQ_CALLBACK
+            ,   REQ_MESSAGE
+            ,   REQ_CREATE_DATE
+            ,   REQ_TRAN_TYPE
+            ,   '1'
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ROWID
+            ,   REQ_UUID
+            ,   #{mtsTest}
+        FROM    OV_REQUEST_SEND
+        WHERE   EXE_HST_ROWID = ${exeRunHstRowid}
+        AND     ACCT_ROWID = ${sessionUserRowId}
+        AND     CAMP_ROWID = ${campRowid}
+        AND     TMP_DTL_ROWID = ${tmpDtlRowid}
+        AND     REQ_UUID = #{uuid}
+        <include refid="limited" />
+    </insert>
+
+    <insert id="insertSmsByNotify" parameterType="dataMap">
+        INSERT INTO MTS_SMS_MSG (
+            TRAN_PHONE
+            , TRAN_CALLBACK
+            , TRAN_SUBJECT
+            , TRAN_MSG
+            , TRAN_DATE
+            , TRAN_TYPE
+            , TRAN_STATUS
+            , TRAN_ID
+        ) VALUES (
+            ${receiver}
+            , ${callback}
+            , ${subject}
+            , ${message}
+            , now()
+            , 0
+            , '1'
+            , #{mtsTest}
+        )
+    </insert>
+
+    <insert id="insertMms" parameterType="java.util.Map">
+       INSERT INTO MTS_MMS_MSG${mtsTableNo} (
+                TRAN_PHONE
+            ,   TRAN_CALLBACK
+            ,   TRAN_SUBJECT
+            ,   TRAN_MSG
+            ,   TRAN_DATE
+            ,   TRAN_TYPE
+            ,   TRAN_STATUS
+            ,   TRAN_ETC1
+            ,   TRAN_ETC2
+            ,   TRAN_ETC3
+            ,   TRAN_ETC4
+            ,   TRAN_ID
+        ) 
+        SELECT  REQ_PHONE_NO
+            ,   REQ_CALLBACK
+            ,   REQ_SUBJECT
+            ,   REQ_MESSAGE
+            ,   REQ_CREATE_DATE
+            ,   REQ_TRAN_TYPE
+            ,   '1'
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ROWID
+            ,   REQ_UUID
+            ,   #{mtsTest}
+        FROM    OV_REQUEST_SEND
+        WHERE   EXE_HST_ROWID = ${exeRunHstRowid}
+        AND     ACCT_ROWID = ${sessionUserRowId}
+        AND     CAMP_ROWID = ${campRowid}
+        AND     TMP_DTL_ROWID = ${tmpDtlRowid}
+        AND     REQ_UUID = #{uuid}
+        <include refid="limited" />
+    </insert>
+
+    <insert id="insertMmsFile" parameterType="java.util.Map">
+        INSERT INTO MTS_MMS_CONTENTS${mtsTableNo}
+        SELECT  A.TRAN_PR                                                   AS TRAN_PR
+            ,   ROW_NUMBER() OVER(PARTITION BY A.TRAN_PR ORDER BY B.ROWID)  AS CONTENT_SEQ
+            ,   'IMG'                                                       AS CONTENT_TYPE
+            ,   B.TMP_ATT_FILEPATH                                          AS CONTENT_NAME
+            ,   'ALL'                                                       AS CONTENT_SVC
+            ,   'N'                                                         AS TRAN_LOG
+        FROM    MTS_MMS_MSG${mtsTableNo} A
+            ,   OV_TEMPLATE_ATT     B
+        WHERE   A.TRAN_ETC4 = #{uuid}
+        AND     B.TMP_DTL_ROWID = ${tmpDtlRowid}
+    </insert>
+
+</mapper>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.quartz.executional.mapper.ScheduleExecutionalMapper">
+    
+    <!--  -->
+    <select id="selectExecutional" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.executional.selectExecutional*/
+        WITH    W_EXE_LST                                                                               AS (
+            SELECT  A.ROWID                                                                             AS EXE_ROWID
+                ,   A.CAMP_ROWID                                                                        AS CAMP_ROWID
+                ,   B.ACCT_ROWID                                                                        AS ACCT_ROWID
+                ,   B.REG_NAME                                                                          AS CAMP_NAME
+                ,   STR_TO_DATE(CONCAT(CURRENT_DATE, B.REG_SEND_START_TIME), '%Y-%m-%d %H%i%s')         AS TRAN_DATE                 
+                ,   CASE WHEN   B.REG_SEND_TIME_TYPE = 'F' AND B.REG_FIXED_TIME_TYPE = 'D'              THEN
+                    --  매일 주기
+                        CASE WHEN
+                                NULLIF(B.REG_FIXED_TIME_DETAIL_TYPE, '') IS NULL                        THEN
+                        -- 반복 주기가 없으면 매일 처리 ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        WHEN    NULLIF(B.REG_FIXED_TIME_DETAIL_TYPE, '') = 'D'
+                        AND     MOD(CURRENT_DATE - STR_TO_DATE(B.REG_SEND_START_DATE, '%Y%m%d')
+                                    , B.REG_FIXED_TIME_INTERVAL) = 0                                    THEN
+                        -- 반복 주기가 'D'이면서 반복 상세 해당하면 실행 ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        ELSE
+                        -- 그외엔 제외처리
+                            'N'
+                        END
+                    WHEN        B.REG_SEND_TIME_TYPE = 'F' AND B.REG_FIXED_TIME_TYPE = 'W'              THEN
+                    -- 매주 주기
+                        CASE WHEN
+                                NULLIF(B.REG_FIXED_TIME_DETAIL_TYPE, '') IS NULL
+                        AND     INSTR(B.REG_FIXED_TIME_WEEK, WEEKDAY(CURRENT_DATE)) <![CDATA[>]]> 0                 THEN
+                        -- 반복 주기가 없으면서 반복 요일이 오늘인 경우 실행  ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        WHEN    NULLIF(B.REG_FIXED_TIME_DETAIL_TYPE, '') = 'W'
+                        AND     MOD(WEEKOFYEAR(CURRENT_DATE)
+                                    - WEEKOFYEAR(STR_TO_DATE(B.REG_SEND_START_DATE, '%Y%m%d'))
+                                    , B.REG_FIXED_TIME_INTERVAL) = 0
+                        AND     INSTR(B.REG_FIXED_TIME_WEEK, WEEKDAY(CURRENT_DATE)) <![CDATA[>]]> 0                 THEN
+                        -- 반복 주기가 'W'이면 반복 주에 해당하면 설정된 요일인 경우 실행  ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        ELSE
+                        -- 그외엔 제외처리
+                            'N'
+                        END
+                    WHEN        B.REG_SEND_TIME_TYPE = 'F' AND B.REG_FIXED_TIME_TYPE = 'M'              THEN
+                    -- 매월 주기
+                        CASE WHEN
+                                B.REG_FIXED_TIME_DETAIL_TYPE = 'D'
+                        AND     B.REG_FIXED_TIME_INTERVAL = '9999'
+                        AND     LAST_DAY(CURRENT_DATE) = CURRENT_DATE                                   THEN
+                        -- 월말로 설정된 경우 말일자 체크하여 실행 ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        WHEN    B.REG_FIXED_TIME_DETAIL_TYPE = 'D'
+                        AND     B.REG_FIXED_TIME_INTERVAL = DAY(CURRENT_DATE)             THEN
+                        -- 날짜로 설정된 경우 당일자 체크하여 실행 ( 추후 휴일 로직 들어가야 한다. )
+                            'Y'
+                        WHEN    B.REG_FIXED_TIME_DETAIL_TYPE = 'W'
+                        AND     INSTR(B.REG_FIXED_TIME_WEEK, WEEKDAY(CURRENT_DATE)) <![CDATA[>]]> 0                 THEN
+                        -- 주 반복이면서 등록된 요일이면
+                            CASE WHEN
+                                    WEEKOFYEAR(LAST_DAY(DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)))
+                                    = WEEKOFYEAR(CONCAT(DATE_FORMAT(CURRENT_DATE, '%Y%m'), '01'))
+                            -- 전월 마지막날과 오늘의 주가 같으면 오늘은 저번달의 마지막주로 처리
+                            AND     B.REG_FIXED_TIME_INTERVAL = WEEKOFYEAR(CURRENT_DATE)
+                                    - WEEKOFYEAR(LAST_DAY(DATE_ADD(CURRENT_DATE, INTERVAL -2 MONTH)))   THEN
+                            -- 전월의 마지막주로 계산해야 하므로 현재의 주에서 전전월 마지막주를 뺀 주차가 등록되어 있으면 실행
+                                'Y'
+                            WHEN    WEEKOFYEAR(LAST_DAY(DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)))
+                                    <![CDATA[<]]> WEEKOFYEAR(CONCAT(DATE_FORMAT(CURRENT_DATE, '%Y%m'), '01'))
+                            -- 전월 마지막날보다 당월 첫날의 주가 크다면
+                            AND     B.REG_FIXED_TIME_INTERVAL = WEEKOFYEAR(CURRENT_DATE)
+                                    - WEEKOFYEAR(LAST_DAY(DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)))   THEN
+                            -- 첫주로 계산을 해야하므로 현재의 주에서 전월 마지막주를 뺀 주차가 등록되어 있으면 실행
+                                'Y'
+                            ELSE
+                                'N'
+                            END 
+                        ELSE
+                            'N'
+                        END
+                    WHEN        B.REG_SEND_TIME_TYPE = 'F' AND B.REG_FIXED_TIME_TYPE = 'Y'              THEN
+                    -- 매년 주기
+                        CASE WHEN
+                                STR_TO_DATE(CONCAT(DATE_FORMAT(CURRENT_DATE, '%Y')
+                                    , DATE_FORMAT(B.REG_SEND_START_DATE, '%m%d')), '%Y%m%d')
+                                = CURRENT_DATE                                                          THEN
+                        -- 1년 후의 월일이 같다면 실행
+                            'Y'
+                        ELSE
+                            'N'
+                        END
+                    WHEN        B.REG_SEND_TIME_TYPE = 'R'                                              THEN
+                            'Y'
+                    END                                                                                 AS EXE_RUN_YN
+            FROM    OV_EXE_CAMPAIGN     A
+            INNER JOIN
+                    OV_REG_CAMPAIGN_MST B
+            ON      A.CAMP_ROWID = B.ROWID
+            WHERE   A.EXE_STATUS = 'LIVE'                                           -- LIVE 중인 집행
+            AND     B.REG_SEND_START_TIME 
+                    <![CDATA[<=]]> DATE_FORMAT(DATE_ADD(NOW(), INTERVAL 5 MINUTE), '%H%i%s')   -- 5분전 실행 
+            AND     NVL(NULLIF(B.REG_DEL_YN, ''), 'N') = 'N'                        -- 삭제 안된 캠페인
+            <!--[210727] 예약일에 잔액부족으로 실패한 발송건이 충전후 다음날 같은시간에 발송되는 문제 수정 -->
+            AND (
+                (
+                    B.REG_SEND_TIME_TYPE = 'R'                                          -- 예약 발송이면서
+                    AND DATE_FORMAT(CURRENT_DATE, '%Y%m%d') = B.REG_SEND_START_DATE     -- 오늘 날짜인 캠페인
+                ) OR (
+                    B.REG_SEND_TIME_TYPE = 'F'                                                                                              -- 정기 발송이면서
+                    AND DATE_FORMAT(CURRENT_DATE, '%Y%m%d') BETWEEN B.REG_SEND_START_DATE AND NVL(NULLIF(B.REG_END_DATE, ''), '99991231')   -- 오늘 날짜가 시작일과 종료일 사이인 캠페인
+                )
+            )
+            <!-- AND     B.REG_SEND_TIME_TYPE IN ('R', 'F')                              /* 예약, 정기만 스케쥴 처리 */
+            AND     DATE_FORMAT(CURRENT_DATE, '%Y%m%d')                             /* 오늘 날짜가 시작일과 종료일 사이인 캠페인 */
+                    BETWEEN     B.REG_SEND_START_DATE
+                    AND         NVL(NULLIF(B.REG_END_DATE, ''), '99991231') -->
+            AND     NOT EXISTS (
+                        SELECT  Z.EXE_ROWID
+                        FROM    OV_EXE_RUN_HST Z
+                        WHERE   Z.EXE_ROWID = A.ROWID
+                        AND     Z.EXE_TRAN_DATE = STR_TO_DATE(CONCAT(CURRENT_DATE, B.REG_SEND_START_TIME), '%Y-%m-%d %H%i%s')
+                    )
+        )
+        SELECT  A.EXE_ROWID
+            ,   A.CAMP_ROWID
+            ,   A.ACCT_ROWID
+            ,   A.CAMP_NAME
+            ,   DATE_FORMAT(A.TRAN_DATE, '%Y-%m-%d %H:%i:%s') AS TRAN_DATE
+        FROM    W_EXE_LST A
+        WHERE   A.EXE_RUN_YN = 'Y'
+        AND     NOT EXISTS (
+                    SELECT  Z.EXE_ROWID
+                    FROM    OV_EXE_CHK_HST Z
+                    WHERE   Z.EXE_ROWID = A.EXE_ROWID
+                    AND     Z.EXE_RUN_DATE = A.TRAN_DATE
+                )
+    </select>
+</mapper>

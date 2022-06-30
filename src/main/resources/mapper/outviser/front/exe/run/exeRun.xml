@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.exe.run.mapper.ExeRunMapper">
+    
+    <!--  -->
+    <insert id="insertExeRunHst" parameterType="DataMap">
+        /*enliple.ibot.outviser.front.reg.insertExeRunHst*/
+        INSERT INTO OV_EXE_RUN_HST (
+                ACCT_ROWID
+            ,   EXE_ROWID
+            ,   EXE_RUN_STATUS
+            ,   EXE_TRAN_DATE
+            ,   EXE_RUN_START_DATE
+            ,   ADDR_GRP_ROWID
+            ,   REG_SEND_TIME_TYPE
+            ,   REG_SEND_START_DATE
+            ,   REG_SEND_START_TIME
+            ,   REG_FIXED_TIME_TYPE
+            ,   REG_FIXED_TIME_DETAIL_TYPE
+            ,   REG_FIXED_TIME_INTERVAL
+            ,   REG_FIXED_TIME_WEEK
+            ,   REG_END_DATE
+            ,   REG_OVERLAP_SEND_YN
+            ,   REG_OVERLAP_SEND_TERM
+            ,   REQ_UUID
+        )
+        SELECT  ${sessionUserRowId}
+            ,   A.ROWID       AS EXE_ROWID
+            ,   'START'
+            ,   #{tranDate}
+            ,   CURRENT_TIMESTAMP
+            ,   B.ADDR_GRP_ROWID
+            ,   B.REG_SEND_TIME_TYPE
+            ,   B.REG_SEND_START_DATE
+            ,   B.REG_SEND_START_TIME
+            ,   B.REG_FIXED_TIME_TYPE
+            ,   B.REG_FIXED_TIME_DETAIL_TYPE
+            ,   B.REG_FIXED_TIME_INTERVAL
+            ,   B.REG_FIXED_TIME_WEEK
+            ,   B.REG_END_DATE
+            ,   REG_OVERLAP_SEND_YN
+            ,   B.REG_OVERLAP_SEND_TERM
+            ,   #{uuid}
+        FROM    OV_EXE_CAMPAIGN A
+            ,   OV_REG_CAMPAIGN_MST B
+        WHERE   A.ROWID = #{exeRowid}
+        AND     A.CAMP_ROWID = B.ROWID
+        <selectKey resultType="long" keyProperty="exeRunHstRowid" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    
+    <!--  -->
+    <update id="updateExeRunHst" >
+        /*enliple.ibot.outviser.front.reg.updateExeRunHst*/
+        UPDATE  OV_EXE_RUN_HST
+        SET     EXE_RUN_STATUS = NVL(#{exeRunStatus}, EXE_RUN_STATUS)
+            ,   EXE_RUN_TOT_COUNT = NVL(#{exeRunTotCount}, EXE_RUN_TOT_COUNT)
+            ,   EXE_SUCCESS_COUNT = NVL(#{exeSuccessCount}, EXE_SUCCESS_COUNT)
+            ,   EXE_FAILURE_COUNT = NVL(#{exeFailuerCount}, EXE_FAILURE_COUNT)
+            ,   EXE_SUCCESS_AMOUNT = NVL(#{exeSuccessAmount}, EXE_SUCCESS_AMOUNT)
+            ,   EXE_DISCOUNT_AMOUNT = NVL(#{exeDiscountAmount}, EXE_DISCOUNT_AMOUNT)
+            ,   TMP_DTL_ROWID = NVL(#{tmpDtlRowid}, TMP_DTL_ROWID)
+            ,   EXE_RUN_END_DATE = CASE WHEN #{exeRunStatus} = 'DONE' THEN CURRENT_TIMESTAMP ELSE EXE_RUN_END_DATE END
+            ,   EXE_UNIT_AMOUNT       = NVL(#{exeUnitAmount}, 0)
+            ,   EXE_UNIT_EXTRA_AMOUNT = NVL(#{exeUnitExtraAmount}, 0)
+            ,   REPLACE_UNIT_AMOUNT   = NVL(#{replaceUnitAmount}, 0)
+        WHERE   ROWID = ${exeRunHstRowid}
+    </update>
+    
+    
+    
+</mapper>

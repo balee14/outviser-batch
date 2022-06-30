@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.report.crm.mapper.ReportCrmMapper">
+    
+    <!--  -->
+    <insert id="insertCrmOrgData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.schedule.crm.insertCrmOrgData*/
+        INSERT INTO OV_REPORT_CRM_ORG (
+                REPORT_DATE_H
+            ,   ADVER_ID
+            ,   CRM_CAMP_NO
+            ,   CAMP_ROWID
+            ,   TEMP_DTL_ROWID
+            ,   INFLOW_CNT
+            ,   CONV_CNT_S
+            ,   CONV_CNT_D
+            ,   CONV_CNT_T
+            ,   SALE_AMT_S
+            ,   SALE_AMT_D
+            ,   SALE_AMT_T
+        ) VALUES 
+        <foreach collection="list" item="datas" separator=",">
+        (
+                #{datas.yyyymmddhh}
+            ,   #{datas.adverId}
+            ,   #{datas.campNo}
+            ,   #{datas.channelKey}
+            ,   0
+            ,   #{datas.clickCnt}
+            ,   #{datas.convCnt1}
+            ,   #{datas.convCnt2}
+            ,   #{datas.convCnt3}
+            ,   #{datas.convPrice1}
+            ,   #{datas.convPrice2}
+            ,   #{datas.convPrice3}
+        )
+        </foreach>
+    </insert>
+    
+    <!--  -->
+    <insert id="insertReportDataH" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.insertReportDataH*/
+        INSERT INTO OV_REPORT_CRM_H
+        SELECT  DISTINCT
+                A.REPORT_DATE_H
+            ,   A.REPORT_DATE_H                                                 AS LONG_TYPE_DATA
+            ,   DATE_FORMAT(STR_TO_DATE(A.REPORT_DATE_H, '%Y%m%d%H'), '%d%H')   AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID
+            ,   A.ADVER_ID
+            ,   A.CRM_CAMP_NO
+            ,   A.CAMP_ROWID
+            ,   A.TEMP_DTL_ROWID
+            ,   A.INFLOW_CNT
+            ,   A.CONV_CNT_S
+            ,   A.CONV_CNT_D
+            ,   A.CONV_CNT_T
+            ,   A.SALE_AMT_S
+            ,   A.SALE_AMT_D
+            ,   A.SALE_AMT_T
+        FROM    OV_REPORT_CRM_ORG   A
+            ,   OV_REG_CAMPAIGN_MST B
+        WHERE   A.REPORT_DATE_H BETWEEN #{startDateH} AND #{endDateH}
+        AND     A.CAMP_ROWID = B.ROWID
+        AND     A.CRM_CAMP_NO = 0
+        UNION ALL
+        SELECT  DISTINCT
+                A.REPORT_DATE_H
+            ,   A.REPORT_DATE_H                                                 AS LONG_TYPE_DATA
+            ,   DATE_FORMAT(STR_TO_DATE(A.REPORT_DATE_H, '%Y%m%d%H'), '%d%H')   AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID
+            ,   A.ADVER_ID
+            ,   A.CRM_CAMP_NO
+            ,   B.ROWID                                                         AS CAMP_ROWID
+            ,   A.TEMP_DTL_ROWID
+            ,   A.INFLOW_CNT
+            ,   A.CONV_CNT_S
+            ,   A.CONV_CNT_D
+            ,   A.CONV_CNT_T
+            ,   A.SALE_AMT_S
+            ,   A.SALE_AMT_D
+            ,   A.SALE_AMT_T
+        FROM    OV_REPORT_CRM_ORG   A
+            ,   OV_REG_CAMPAIGN_MST B
+            ,   OV_EXE_CAMPAIGN     C
+        WHERE   A.REPORT_DATE_H BETWEEN #{startDateH} AND #{endDateH}
+        AND     A.CRM_CAMP_NO = B.REG_CRM_NO
+        AND     A.CAMP_ROWID = 0
+        AND     B.ROWID = C.CAMP_ROWID
+        AND     C.EXE_STATUS = 'LIVE'
+        UNION ALL
+        SELECT  DISTINCT
+                A.REPORT_DATE_H
+            ,   A.REPORT_DATE_H                                                 AS LONG_TYPE_DATA
+            ,   DATE_FORMAT(STR_TO_DATE(A.REPORT_DATE_H, '%Y%m%d%H'), '%d%H')   AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID
+            ,   A.ADVER_ID
+            ,   A.CRM_CAMP_NO
+            ,   A.CAMP_ROWID
+            ,   A.TEMP_DTL_ROWID
+            ,   A.INFLOW_CNT
+            ,   A.CONV_CNT_S
+            ,   A.CONV_CNT_D
+            ,   A.CONV_CNT_T
+            ,   A.SALE_AMT_S
+            ,   A.SALE_AMT_D
+            ,   A.SALE_AMT_T
+        FROM    OV_REPORT_CRM_ORG   A
+            ,   OV_REG_CAMPAIGN_MST B
+        WHERE   A.REPORT_DATE_H BETWEEN #{startDateH} AND #{endDateH}
+        AND     A.CRM_CAMP_NO = B.REG_CRM_NO
+        AND     A.CAMP_ROWID = B.ROWID
+    </insert>
+    
+    <!--  -->
+    <delete id="deleteCrmOrgData" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.deleteCrmOrgData*/
+        DELETE FROM OV_REPORT_CRM_ORG
+        WHERE   REPORT_DATE_H BETWEEN #{startDateH} AND #{endDateH}
+    </delete>
+    
+    <!--  -->
+    <delete id="deleteReportDataH" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.crm.deleteReportDataH*/
+        DELETE FROM OV_REPORT_CRM_H
+        WHERE   REPORT_DATE_H BETWEEN #{startDateH} AND #{endDateH}
+    </delete>
+    
+</mapper>

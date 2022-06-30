@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enliple.outviserbatch.outviser.api.payment.mapper.ApiChargeMapper"> 
+    
+    <!--  -->
+    <insert id="insertCharge" parameterType="dataMap">
+        /*enliple.ibot.outviser.api.payment.insertCharge*/
+        INSERT INTO OV_CHARGE (
+              ACCT_ROWID
+            , CH_CHARGE_TYPE
+            , CH_PAYMENT_AMOUNT
+            , CH_REMARK
+            , CH_AMOUNT
+            , CH_CURRENT_AMOUNT
+            , CH_POINT
+            , CH_CURRENT_POINT
+            , CH_POINT_RATE
+            , CH_DIRECT_ROWID
+            , CH_ORDERID
+            , CH_EVENT_REF
+            , CH_START_DATE
+            , CH_END_DATE
+        ) VALUES (
+              NVL(#{targetUserRowid}, #{sessionUserRowId})
+            , #{chargeType}
+            , #{paymentAmount}
+            , #{remark}
+            , #{amount}
+            , #{currentAmount}
+            , #{point}
+            , #{currentPoint}
+            , #{pointRate}
+            , #{directRowid}
+            , #{orderId}
+            , #{eventRef}
+            , NVL2(#{startDate}, #{startDate}, DATE_FORMAT(CURRENT_DATE, '%Y%m%d'))
+            , NVL2(#{endDate}, #{endDate}, '29991231') 
+        );
+    </insert>
+    
+    
+</mapper>

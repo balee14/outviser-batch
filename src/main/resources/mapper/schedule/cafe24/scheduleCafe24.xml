@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.cafe24.mapper.ScheduleCafe24TokenReissuanceMapper">
+    <!--  -->
+	<select id="selectTokenExpirationImminentList" resultType="dataMap">
+		SELECT
+			ROWID						AS acctRowId
+			, MALL_ID 					AS mallId
+			, CLIENT_ID 				AS clientId
+			, CLIENT_SECRET_KEY 		AS clientSecretKey
+			, REFRESH_TOKEN 			AS refreshToken
+		FROM OV_ACCT_MST
+		WHERE REFRESH_TOKEN_EXPIRES_AT <![CDATA[<]]> DATE_ADD(NOW(), INTERVAL -2 DAY);
+	</select>
+
+	<!--  -->
+	<update id="updateTokenExpirationImminent" parameterType="dataMap">
+		UPDATE
+		    OV_ACCT_MST
+		SET
+		    ACCESS_TOKEN = #{accessToken}
+		  , REFRESH_TOKEN = #{refreshToken}
+		  , REFRESH_TOKEN_EXPIRES_AT = #{refreshTokenExpiresAt}
+		WHERE ROWID = #{acctRowId}
+	</update>
+</mapper>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.api.payment.mapper.ApiUsedChargeMapper">
+    
+    <!--  -->
+    <sql id = "acctCurrentAmount">
+        SELECT  NVL(ACCT_CURRENT_AMOUNT, 0)     AS ACCT_CURRENT_AMOUNT
+            ,   NVL(ACCT_CURRENT_POINT, 0)      AS ACCT_CURRENT_POINT
+        FROM    OV_ACCT_MST
+        WHERE   ROWID = ${sessionUserRowId}
+    </sql>
+    
+    <!--  -->
+    <sql id = "chargeCurrentAmount">
+        SELECT  NVL(SUM(CH_CURRENT_AMOUNT), 0)  AS CH_TOT_CURRENT_AMOUNT
+            ,   NVL(SUM(
+                    -- 포인트에 대해서만 시작, 종료일 체크
+                    CASE WHEN DATE_FORMAT(CURRENT_DATE, '%Y%m%d') BETWEEN CH_START_DATE AND CH_END_DATE THEN
+                        CH_CURRENT_POINT
+                    ELSE
+                        0
+                    END
+                *10)/10, 0)                           AS CH_TOT_CURRENT_POINT
+        FROM    OV_CHARGE
+        WHERE   CH_CHARGE_TYPE IN ('CT_CANCEL', 'CT_CHARGE', 'CT_EVENT', 'CT_FAIL_REFUND', 'CT_REFUND')
+        AND     (   NVL(CH_CURRENT_AMOUNT, 0) != 0
+                OR  NVL(CH_CURRENT_POINT, 0) != 0)
+        AND     ACCT_ROWID = ${sessionUserRowId}
+    </sql>
+    
+    <!-- -->
+    <select id="selectCheckAmount" resultType="dataMap">
+        /*enliple.ibot.outviser.api.payment.selectCheckAmount*/
+        WITH    W_ACCT_CURRENT_DATA                 AS (
+            <include refid = "acctCurrentAmount" />
+        ),      W_CHARGE_CURRENT_DATA               AS (
+            <include refid = "chargeCurrentAmount" />
+        )
+        SELECT  SIGN(ACCT_CURRENT_AMOUNT - CH_TOT_CURRENT_AMOUNT)                       AS CHECK_CURRENT_AMOUNT
+            ,   SIGN(ACCT_CURRENT_POINT - CH_TOT_CURRENT_POINT)                         AS CHECK_CURRENT_POINT
+            ,   SIGN(ACCT_CURRENT_AMOUNT + ACCT_CURRENT_POINT - (${reqAmount} * -1))   AS CHECK_USED_AMOUNT
+        FROM    W_ACCT_CURRENT_DATA     A
+            ,   W_CHARGE_CURRENT_DATA   B
+    </select>
+    
+    <!--  -->
+    <select id="selectChargeData" resultType="dataMap">
+        /*enliple.ibot.outviser.api.payment.selectChargeData*/
+        WITH W_CURRENT_CHARGE                   AS (
+            SELECT  NVL(CH_CURRENT_AMOUNT, 0)   AS CH_CURRENT_AMOUNT
+                ,   NVL(CH_CURRENT_AMOUNT, 0)   AS USED_BEFORE_AMOUNT
+                ,   NVL(CH_CURRENT_POINT, 0)    AS USED_BEFORE_POINT
+                ,   CH_START_DATE               AS CH_START_DATE
+                ,   CH_END_DATE                 AS CH_END_DATE
+                ,   ROWID                       AS ROWID
+                ,   1                           AS USED_ORDER
+            FROM    OV_CHARGE
+            WHERE   CH_CHARGE_TYPE = 'CT_CHARGE'
+            AND     NVL(CH_CURRENT_AMOUNT, 0) > 0 
+            AND     ACCT_ROWID = ${sessionUserRowId}
+            UNION ALL
+            SELECT  NVL(CH_CURRENT_POINT, 0)    AS CH_CURRENT_AMOUNT
+                ,   NVL(CH_CURRENT_AMOUNT, 0)   AS USED_BEFORE_AMOUNT
+                ,   NVL(CH_CURRENT_POINT, 0)    AS USED_BEFORE_POINT
+                ,   CH_START_DATE               AS CH_START_DATE
+                ,   CH_END_DATE                 AS CH_END_DATE
+                ,   ROWID                       AS ROWID
+                ,   2                           AS USED_ORDER
+            FROM    OV_CHARGE
+            WHERE   CH_CHARGE_TYPE IN ('CT_CHARGE', 'CT_FAIL_REFUND', 'CT_EVENT', 'CT_REFUND')
+            AND     DATE_FORMAT(CURRENT_DATE, '%Y%m%d') BETWEEN CH_START_DATE AND CH_END_DATE -- 포인트에 대해서만 시작, 종료일 체크
+            AND     NVL(CH_CURRENT_POINT, 0) > 0
+            AND     ACCT_ROWID = ${sessionUserRowId}
+        )
+        SELECT  ROWID                           AS CHARGE_ROWID
+            ,   USED_ORDER                      AS USED_ORDER
+            ,   CH_CURRENT_AMOUNT               AS CHARGE_CURRENT_AMOUNT
+            ,   USED_BEFORE_AMOUNT              AS USED_BEFORE_AMOUNT
+            ,   USED_BEFORE_POINT               AS USED_BEFORE_POINT
+        FROM    W_CURRENT_CHARGE
+        ORDER BY USED_ORDER, CH_END_DATE, CH_START_DATE, ROWID
+    </select>
+    
+    <!-- -->
+    <insert id="insertUsedCharge" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.payment.insertUsedCharge*/
+        INSERT INTO OV_USED_CHARGE (
+                ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   USED_UUID
+            ,   CHARGE_ROWID
+            ,   USED_SEND_TYPE
+            ,   USED_AMOUNT
+            ,   USED_POINT
+            ,   USED_BEFORE_AMOUNT
+            ,   USED_BEFORE_POINT
+        ) VALUES
+        <foreach collection="list" item="datas" separator=","> 
+        (
+                ${datas.sessionUserRowId}
+            ,   ${datas.campRowid}
+            ,   #{datas.uuid}
+            ,   ${datas.chargeRowid}
+            ,   #{datas.usedSendType}
+            ,   ${datas.usedAmount}
+            ,   ${datas.usedPoint}
+            ,   ${datas.usedBeforeAmount}
+            ,   ${datas.usedBeforePoint}
+        )
+        </foreach>
+    </insert>
+    
+    <!-- -->
+    <update id="updateChargeData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.payment.updateChargeData*/
+        <foreach collection="list" item="datas" index="index" open="" close=";" separator=";">
+            UPDATE  OV_CHARGE
+            SET     CH_UPDATE_DATE = CURRENT_TIMESTAMP
+                <if test='datas.usedAmount != null and datas.usedAmount != ""'>
+                ,   CH_CURRENT_AMOUNT = CH_CURRENT_AMOUNT + ${datas.usedAmount}
+                </if>
+                <if test='datas.usedPoint != null and datas.usedPoint != ""'>
+                ,   CH_CURRENT_POINT  = CH_CURRENT_POINT + ${datas.usedPoint}
+                </if>
+            WHERE   ROWID = ${datas.chargeRowid}
+        </foreach>
+    </update>
+    
+    
+    
+</mapper>

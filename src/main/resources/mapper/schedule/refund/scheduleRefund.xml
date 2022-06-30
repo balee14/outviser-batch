@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper">
+
+    <insert id="testInsert" parameterType="String">
+        insert into A_TEST_INSERT (TEXT) values ( #{param} )
+    </insert>
+
+
+    <select id="selectRefundTargetList" resultType="dataMap">
+        /*com.enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.selectRefundTargetList*/
+        SELECT
+            er.ROWID AS exeRunHstRowid,
+            er.ACCT_ROWID as sessionUserRowId,
+            DATE_FORMAT( DATE_ADD( er.EXE_TRAN_DATE, INTERVAL + 1 DAY ), '%Y%m%d' ) AS chargeDt,
+            (NVL(er.EXE_UNIT_AMOUNT, 0) + NVL(er.EXE_UNIT_EXTRA_AMOUNT, 0)) * er.SEND_FAIL_COUNT 	AS refundPoint,
+            (er.REPLACE_SUCCESS_COUNT * er.REPLACE_UNIT_AMOUNT) * -1 								AS replaceMoney,
+            ( am.ACCT_CURRENT_AMOUNT + am.ACCT_CURRENT_POINT ) as currentMoney
+        FROM
+            OV_EXE_RUN_HST er
+            INNER JOIN OV_EXE_CAMPAIGN ec 		ON ( er.EXE_ROWID = ec.ROWID )
+            LEFT JOIN OV_TEMPLATE_FAILMSG tf 	ON ( er.TMP_DTL_ROWID = tf.TMP_DTL_ROWID )
+            LEFT JOIN OV_CHARGE c 				ON (er.ROWID = c.CH_EXE_RUN_HST_ROWID)
+            LEFT JOIN OV_ACCT_MST am            ON ( er.ACCT_ROWID = am.ROWID )
+        WHERE
+            er.ROWID > 0
+        --    AND er.ACCT_ROWID IN ( 1, 100001, 100002 ) -- 테스트용
+            AND er.EXE_RUN_STATUS = 'DONE'
+            AND er.EXE_SUCCESS_COUNT > 0
+            AND er.SEND_FAIL_COUNT > 0
+            AND c.ROWID IS NULL
+           /* AND TIMESTAMPDIFF(DAY, er.EXE_TRAN_DATE, NOW()) <![CDATA[<]]> 3 -- 당분간 전체로 진행 추후 최근 3~4일 이내로 변경 예정 - js */
+            AND !( NVL(tf.TMP_FAILMSG_SENDTYPE, 'N') != 'N' AND er.SEND_FAIL_COUNT != er.REPLACE_SUCCESS_COUNT + er.REPLACE_FAIL_COUNT  )
+            AND !( er.EXE_SUCCESS_COUNT != er.SEND_SUCCESS_COUNT + er.SEND_FAIL_COUNT )
+            AND ( am.ACCT_CURRENT_AMOUNT + am.ACCT_CURRENT_POINT > (er.REPLACE_SUCCESS_COUNT * er.REPLACE_UNIT_AMOUNT) )  /* 추가 과금 비용이 가진 금액 보다 더큰 경우 제외 */
+        ORDER BY er.EXE_TRAN_DATE
+        <if test='limitCnt != null and limitCnt > 0'>
+            LIMIT #{limitCnt}
+        </if>
+    </select>
+
+    <!-- 해당 집행건에 대한 환불 이력 확인 -->
+    <select id="selectChargeForExistRefund" resultType="dataMap" parameterType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.selectChargeForExistRefund*/
+        SELECT CH_CREATE_DATE, CH_POINT
+        FROM OV_CHARGE
+        WHERE CH_CHARGE_TYPE = 'CT_FAIL_REFUND'
+          AND CH_EXE_RUN_HST_ROWID = #{exeRunHstRowid}
+    </select>
+
+    <!-- 환불 처리 -->
+    <insert id="insertChargeForFailRefund" parameterType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.insertChargeForFailRefund*/
+        INSERT INTO OV_CHARGE (
+                    ACCT_ROWID
+                  , CH_CHARGE_TYPE
+                  , CH_REMARK
+                  , CH_POINT
+                  , CH_CURRENT_POINT
+                  , CH_START_DATE
+                  , CH_END_DATE
+                  , CH_CREATE_DATE
+                  , CH_EXE_RUN_HST_ROWID
+        ) VALUES (
+                     #{sessionUserRowId}
+                 , 'CT_FAIL_REFUND'
+                 , '자동 환불'
+                 , #{refundPoint}
+                 , #{refundPoint}
+                 , DATE_FORMAT(CURRENT_DATE, '%Y%m%d')
+                 , '29991231'
+                 , NOW()
+                 , #{exeRunHstRowid}
+                 );
+    </insert>
+
+    <!-- 잔액 업데이트 -->
+    <update id="updateAcctMstForFailRefund" parameterType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.updateAcctMstForFailRefund*/
+        UPDATE OV_ACCT_MST SET
+            ACCT_CURRENT_POINT = ACCT_CURRENT_POINT + #{refundPoint}
+        WHERE ROWID = #{sessionUserRowId}
+    </update>
+
+
+    <!-- 추가 과금 정보 조회 -->
+    <select id="selectUsedChargeInfo" resultType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.selectUsedChargeInfo*/
+        SELECT
+            er.ACCT_ROWID 																		AS SESSION_USER_ROW_ID
+             , ec.CAMP_ROWID 																		AS CAMP_ROWID
+             , er.REQ_UUID 																			AS UUID
+             , CONCAT(tf.TMP_FAILMSG_SENDTYPE, 'MS') 												AS USED_SEND_TYPE
+             , (er.REPLACE_UNIT_AMOUNT + er.EXE_UNIT_EXTRA_AMOUNT) * er.REPLACE_SUCCESS_COUNT * -1 	AS REQ_AMOUNT
+        FROM OV_EXE_RUN_HST er
+                 INNER JOIN OV_EXE_CAMPAIGN ec 		ON (er.EXE_ROWID = ec.ROWID)
+                 LEFT JOIN OV_TEMPLATE_FAILMSG tf 	ON (er.TMP_DTL_ROWID = tf.TMP_DTL_ROWID)
+        WHERE er.ROWID = #{exeRunHstRowid}
+          AND NVL(tf.TMP_FAILMSG_SENDTYPE, 'N') != 'N'
+    </select>
+
+    <!-- 충전 내역 조회 ( 차감 순으로 )  -->
+    <select id="selectChargeData" resultType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.selectChargeData*/
+        WITH W_CURRENT_CHARGE                   AS (
+            SELECT  NVL(CH_CURRENT_AMOUNT, 0)   AS CH_CURRENT_AMOUNT
+                 ,   NVL(CH_CURRENT_AMOUNT, 0)   AS USED_BEFORE_AMOUNT
+                 ,   NVL(CH_CURRENT_POINT, 0)    AS USED_BEFORE_POINT
+                 ,   CH_START_DATE               AS CH_START_DATE
+                 ,   CH_END_DATE                 AS CH_END_DATE
+                 ,   ROWID                       AS ROWID
+                 ,   1                           AS USED_ORDER
+            FROM    OV_CHARGE
+            WHERE   CH_CHARGE_TYPE = 'CT_CHARGE'
+              AND     NVL(CH_CURRENT_AMOUNT, 0) > 0
+              AND     ACCT_ROWID = ${sessionUserRowId}
+            UNION ALL
+            SELECT  NVL(CH_CURRENT_POINT, 0)    AS CH_CURRENT_AMOUNT
+                 ,   NVL(CH_CURRENT_AMOUNT, 0)   AS USED_BEFORE_AMOUNT
+                 ,   NVL(CH_CURRENT_POINT, 0)    AS USED_BEFORE_POINT
+                 ,   CH_START_DATE               AS CH_START_DATE
+                 ,   CH_END_DATE                 AS CH_END_DATE
+                 ,   ROWID                       AS ROWID
+                 ,   2                           AS USED_ORDER
+            FROM    OV_CHARGE
+            WHERE   CH_CHARGE_TYPE IN ('CT_CHARGE', 'CT_FAIL_REFUND', 'CT_EVENT', 'CT_REFUND')
+              AND     DATE_FORMAT(CURRENT_DATE, '%Y%m%d') BETWEEN CH_START_DATE AND CH_END_DATE -- 포인트에 대해서만 시작, 종료일 체크
+              AND     NVL(CH_CURRENT_POINT, 0) > 0
+              AND     ACCT_ROWID = ${sessionUserRowId}
+        )
+        SELECT  ROWID                           AS CHARGE_ROWID
+             ,   USED_ORDER                      AS USED_ORDER
+             ,   CH_CURRENT_AMOUNT               AS CHARGE_CURRENT_AMOUNT
+             ,   USED_BEFORE_AMOUNT              AS USED_BEFORE_AMOUNT
+             ,   USED_BEFORE_POINT               AS USED_BEFORE_POINT
+        FROM    W_CURRENT_CHARGE
+        ORDER BY USED_ORDER, CH_END_DATE, CH_START_DATE, ROWID
+    </select>
+
+
+    <!-- 금액 검증용  -->
+    <select id="selectCheckAmount" resultType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.selectCheckAmount*/
+        WITH    W_ACCT_CURRENT_DATA                 AS (
+            SELECT  NVL(ACCT_CURRENT_AMOUNT, 0)     AS ACCT_CURRENT_AMOUNT
+            ,   NVL(ACCT_CURRENT_POINT, 0)      AS ACCT_CURRENT_POINT
+            FROM    OV_ACCT_MST
+            WHERE   ROWID = ${sessionUserRowId}
+        ),      W_CHARGE_CURRENT_DATA               AS (
+            SELECT  NVL(SUM(CH_CURRENT_AMOUNT), 0)  AS CH_TOT_CURRENT_AMOUNT
+                 ,   NVL(SUM(
+                         -- 포인트에 대해서만 시작, 종료일 체크
+                             CASE WHEN DATE_FORMAT(CURRENT_DATE, '%Y%m%d') BETWEEN CH_START_DATE AND CH_END_DATE THEN
+                                      CH_CURRENT_POINT
+                                  ELSE
+                                      0
+                                 END
+                         *10)/10, 0)                       AS CH_TOT_CURRENT_POINT
+            FROM    OV_CHARGE
+            WHERE   CH_CHARGE_TYPE IN ('CT_CANCEL', 'CT_CHARGE', 'CT_EVENT', 'CT_FAIL_REFUND', 'CT_REFUND')
+              AND     (   NVL(CH_CURRENT_AMOUNT, 0) != 0
+	            OR  NVL(CH_CURRENT_POINT, 0) != 0)
+              AND     ACCT_ROWID = ${sessionUserRowId}
+        )
+        SELECT  SIGN(ACCT_CURRENT_AMOUNT - CH_TOT_CURRENT_AMOUNT)                       AS CHECK_CURRENT_AMOUNT
+        ,   SIGN(ACCT_CURRENT_POINT - CH_TOT_CURRENT_POINT)                         AS CHECK_CURRENT_POINT
+        ,   SIGN(ACCT_CURRENT_AMOUNT + ACCT_CURRENT_POINT - (${reqAmount} * -1))   AS CHECK_USED_AMOUNT
+        FROM    W_ACCT_CURRENT_DATA     A
+        ,   W_CHARGE_CURRENT_DATA   B
+    </select>
+
+    <!-- 사용 내역 인서트  -->
+    <insert id="insertUsedCharge" parameterType="java.util.Map">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.insertUsedCharge*/
+        INSERT INTO OV_USED_CHARGE (
+        ACCT_ROWID
+        ,   CAMP_ROWID
+        ,   USED_UUID
+        ,   CHARGE_ROWID
+        ,   USED_SEND_TYPE
+        ,   USED_AMOUNT
+        ,   USED_POINT
+        ,   USED_BEFORE_AMOUNT
+        ,   USED_BEFORE_POINT
+        ) VALUES
+        <foreach collection="list" item="datas" separator=",">
+            (
+            ${datas.sessionUserRowId}
+            ,   ${datas.campRowid}
+            ,   #{datas.uuid}
+            ,   ${datas.chargeRowid}
+            ,   #{datas.usedSendType}
+            ,   ${datas.usedAmount}
+            ,   ${datas.usedPoint}
+            ,   ${datas.usedBeforeAmount}
+            ,   ${datas.usedBeforePoint}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 충전 내역 업데이트 -->
+    <update id="updateChargeData" parameterType="java.util.Map">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.updateChargeData*/
+        <foreach collection="list" item="datas" index="index" open="" close=";" separator=";">
+            UPDATE  OV_CHARGE
+            SET     CH_UPDATE_DATE = CURRENT_TIMESTAMP
+            <if test='datas.usedAmount != null and datas.usedAmount != ""'>
+                ,   CH_CURRENT_AMOUNT = CH_CURRENT_AMOUNT + ${datas.usedAmount}
+            </if>
+            <if test='datas.usedPoint != null and datas.usedPoint != ""'>
+                ,   CH_CURRENT_POINT  = CH_CURRENT_POINT + ${datas.usedPoint}
+            </if>
+            WHERE   ROWID = ${datas.chargeRowid}
+        </foreach>
+    </update>
+
+    <!-- 계정 정보 충전금액 업데이트 -->
+    <update id="updateAcctMstForAmountAndPointU" parameterType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.updateAcctMstForAmountAndPointU*/
+        UPDATE OV_ACCT_MST
+        <trim prefix="SET" suffixOverrides=",">
+            <if test='changeAmount != null and changeAmount != 0'>
+                ACCT_CURRENT_AMOUNT = ACCT_CURRENT_AMOUNT + ${changeAmount},
+            </if>
+            <if test='changePoint != null and changePoint != 0'>
+                ACCT_CURRENT_POINT  = ACCT_CURRENT_POINT  + ${changePoint},
+            </if>
+        </trim>
+        WHERE ROWID = NVL(#{targetUserRowid}, #{sessionUserRowId})
+    </update>
+
+    <!-- 충전 내역 등록 -->
+    <insert id="insertCharge" parameterType="dataMap">
+        /*enliple.outviserbatch.schedule.refund.mapper.ScheduleRefundMapper.insertCharge*/
+        INSERT INTO OV_CHARGE (
+                                ACCT_ROWID
+                              , CH_CHARGE_TYPE
+                              , CH_PAYMENT_AMOUNT
+                              , CH_REMARK
+                              , CH_AMOUNT
+                              , CH_CURRENT_AMOUNT
+                              , CH_POINT
+                              , CH_CURRENT_POINT
+                              , CH_POINT_RATE
+                              , CH_DIRECT_ROWID
+                              , CH_ORDERID
+                              , CH_PAY_AGENT
+                              , CH_EVENT_REF
+                              , CH_START_DATE
+                              , CH_END_DATE
+        ) VALUES (
+                     NVL(#{targetUserRowid}, #{sessionUserRowId})
+                 , #{chargeType}
+                 , #{paymentAmount}
+                 , #{remark}
+                 , #{amount}
+                 , #{currentAmount}
+                 , #{point}
+                 , #{currentPoint}
+                 , #{pointRate}
+                 , #{directRowid}
+                 , #{orderId} /* 2021. 12. 27 김대현 incisMoid -> orderId 로 변경*/
+                 , #{payAgent} /* 2021. 12. 27 결제사 컬럼 추가*/
+                 , #{eventRef}
+                 , NVL2(#{startDate}, #{startDate}, DATE_FORMAT(CURRENT_DATE, '%Y%m%d'))
+                 , NVL2(#{endDate}, #{endDate}, '29991231')
+                 );
+    </insert>
+
+</mapper>

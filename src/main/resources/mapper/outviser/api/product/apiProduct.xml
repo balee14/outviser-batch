@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.api.product.mapper.ApiProductMapper"> 
+    
+    <!-- --> 
+    <select id="selectContractData" resultType="DataMap">
+        /*enliple.ibot.outviser.api.product.selectContractData*/
+        WITH    W_PRODUCT_DATA AS (
+            SELECT  A.ACCT_ROWID
+                ,   C.PROD_NAME 
+                ,   B.PROD_DTL_TYPE
+                ,   B.PROD_DTL_PRICE
+                ,   A.CONT_START_DATE   AS PROD_START_DATE
+                ,   A.CONT_CLOSE_DATE   AS PROD_CLOSE_DATE
+            FROM    OV_ACCT_CONTRACT    A
+                ,   OV_PRODUCT_DTL      B
+                ,   OV_PRODUCT_MST      C
+            WHERE   A.ACCT_ROWID = #{sessionUserRowId}
+            AND     B.PROD_DTL_TYPE = #{prodDtlType}
+            AND     UPPER(A.CONT_TYPE) = 'P'
+            AND     A.CONT_ROWID = B.MST_ROWID
+            AND     B.MST_ROWID = C.ROWID
+            AND     DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d') BETWEEN A.CONT_START_DATE AND NVL(NULLIF(A.CONT_CLOSE_DATE, ''), DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d'))
+            AND     DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d') BETWEEN B.PROD_DTL_START_DATE AND NVL(NULLIF(B.PROD_DTL_CLOSE_DATE, ''), DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d'))
+        ),      W_DISCOUNT_DATA AS (
+            SELECT  A.ACCT_ROWID
+                ,   C.DSC_NAME
+                ,   CASE WHEN B.DSC_DTL_RATE > 0 AND B.DSC_DTL_AMOUNT = 0 THEN
+                        'R'
+                    WHEN B.DSC_DTL_RATE = 0 AND B.DSC_DTL_AMOUNT > 0 THEN
+                        'A'
+                    ELSE
+                        'E'
+                    END                                                             AS DSC_TYPE
+                ,   B.DSC_DTL_TYPE
+                ,   B.DSC_DTL_AMOUNT
+                ,   B.DSC_DTL_RATE
+                ,   A.CONT_START_DATE   AS DSC_START_DATE
+                ,   A.CONT_CLOSE_DATE   AS DSC_CLOSE_DATE
+            FROM    OV_ACCT_CONTRACT    A
+                ,   OV_DISCOUNT_DTL     B
+                ,   OV_DISCOUNT_MST     C
+            WHERE   A.ACCT_ROWID = #{sessionUserRowId}
+            AND     B.DSC_DTL_TYPE = #{prodDtlType}
+            AND     UPPER(A.CONT_TYPE) = 'D'
+            AND     A.CONT_ROWID = B.MST_ROWID
+            AND     B.MST_ROWID = C.ROWID
+            AND     DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d') BETWEEN A.CONT_START_DATE AND NVL(NULLIF(A.CONT_CLOSE_DATE, ''), DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d'))
+            AND     DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d') BETWEEN B.DSC_DTL_START_DATE AND NVL(NULLIF(B.DSC_DTL_CLOSE_DATE, ''), DATE_FORMAT(CURRENT_TIMESTAMP, '%Y%m%d'))
+        )
+        SELECT  A.ACCT_ROWID
+            ,   A.PROD_NAME
+            ,   A.PROD_DTL_TYPE
+            ,   A.PROD_DTL_PRICE
+            ,   A.PROD_START_DATE
+            ,   A.PROD_CLOSE_DATE
+            ,   B.DSC_NAME
+            ,   B.DSC_TYPE
+            ,   B.DSC_DTL_AMOUNT
+            ,   B.DSC_DTL_RATE
+            ,   B.DSC_START_DATE
+            ,   B.DSC_CLOSE_DATE
+        FROM    W_PRODUCT_DATA  A
+        LEFT OUTER JOIN
+                W_DISCOUNT_DATA B
+        ON      A.ACCT_ROWID = B.ACCT_ROWID
+        AND     A.PROD_DTL_TYPE = B.DSC_DTL_TYPE
+    </select>
+    
+    
+    
+</mapper>

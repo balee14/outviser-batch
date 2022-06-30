@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.exe.campaign.mapper.ExeCampaignMapper">
+    
+    <!--  -->
+    <insert id="insertExecutional" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.reg.insertExecutional*/
+        INSERT INTO OV_EXE_CAMPAIGN (
+                CAMP_ROWID
+            ,   EXE_STATUS
+            ,   EXE_BUDGET_YN
+            ,   EXE_BUDGET_AMOUNT
+            ,   EXE_MODIFIED_USER
+        ) VALUES (
+                ${campRowid}
+            ,   UPPER(NVL(#{exeStatus}, 'STOP'))
+            ,   UPPER(NVL(NULLIF(#{exeBudgetYn}, ''), 'N'))
+            ,   NVL(NULLIF(#{exeBudgetAmount}, ''), 0)
+            ,   #{sessionUserRowId}
+        )
+        <selectKey resultType="int" keyProperty="exeRowid" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    
+    <!--  -->
+    <update id="updateExecutional" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.reg.updateExecutional*/
+        UPDATE  OV_EXE_CAMPAIGN
+        SET     EXE_STATUS = UPPER(NVL(#{exeStatus}, EXE_STATUS)) 
+            ,   EXE_BUDGET_YN = UPPER(NVL(NULLIF(#{exeBudgetYn}, ''), EXE_BUDGET_YN))
+            ,   EXE_BUDGET_AMOUNT = NVL(NULLIF(#{exeBudgetAmount}, ''), EXE_BUDGET_AMOUNT)
+            ,   EXE_MODIFIED_DATE = CURRENT_TIMESTAMP
+        WHERE   CAMP_ROWID = #{campRowid}
+    </update>
+    
+    <!--  -->
+    <insert id="insertExecutionalHis" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.reg.insertExecutionalHis*/
+        INSERT INTO OV_EXE_CAMPAIGN_MOD_HST (
+                EXE_ROWID
+            ,   CAMP_ROWID
+            ,   EXE_STATUS
+            ,   EXE_BUDGET_YN
+            ,   EXE_BUDGET_AMOUNT
+            ,   EXE_MODIFIED_USER
+            ,   EXE_MODIFIED_DATE
+            ,   EXE_MODIFIED_TYPE
+        )
+        SELECT  ROWID
+            ,   CAMP_ROWID
+            ,   EXE_STATUS
+            ,   EXE_BUDGET_YN
+            ,   EXE_BUDGET_AMOUNT
+            ,   EXE_MODIFIED_USER
+            ,   EXE_MODIFIED_DATE
+            ,   #{exeHisModType}
+        FROM    OV_EXE_CAMPAIGN
+        WHERE   CAMP_ROWID = #{campRowid}
+    </insert>
+    
+    <select id="selectExeModCheck" resultType="boolean">
+        /*enliple.ibot.outviser.front.reg.selectExeModCheck*/
+        SELECT  CASE
+                    WHEN COUNT(*) > 0 THEN
+                        FALSE
+                    ELSE
+                        TRUE
+                END                             AS BOOL_EXE_MOD
+        FROM    OV_EXE_CAMPAIGN
+        WHERE   CAMP_ROWID = #{campRowid}
+        AND     EXE_STATUS = UPPER(NVL(#{exeStatus}, EXE_STATUS))
+        AND     EXE_BUDGET_YN = UPPER(NVL(#{exeBudgetYn}, EXE_BUDGET_YN))
+        AND     EXE_BUDGET_AMOUNT = NVL(#{exeBudgetAmount}, EXE_BUDGET_AMOUNT)
+    </select>
+    
+    <!--  -->
+    <select id="selectExeInfoForAdmin" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectExeInfoForAdmin*/
+        SELECT
+            rcm.REG_NAME
+            , rcm.REG_MEMO
+            , rcm.REG_CRM_NO
+            , rcm.ADDR_GRP_ROWID
+            , (SELECT ADDR_GRP_NM FROM OV_ADDR_GRP WHERE ROWID = rcm.ADDR_GRP_ROWID) AS ADDR_GRP_NM 
+            , (SELECT COUNT(ROWID) FROM OV_ADDR_DTL WHERE ADDR_GRP_ROWID = rcm.ADDR_GRP_ROWID) AS ADDR_CNT
+            , rcm.TEMPLATE_ROWID
+            , (SELECT TMP_NAME FROM OV_TEMPLATE_MST WHERE ROWID = rcm.TEMPLATE_ROWID) AS TMP_NAME
+            , rcm.REG_SEND_TIME_TYPE
+            , CASE
+                WHEN rcm.REG_SEND_TIME_TYPE = 'N' THEN '즉시'
+                WHEN rcm.REG_SEND_TIME_TYPE = 'R' THEN '예약'
+                WHEN rcm.REG_SEND_TIME_TYPE = 'F' THEN '정기'
+                WHEN rcm.REG_SEND_TIME_TYPE = 'A' THEN '자동'
+                END AS REG_SEND_TIME_TYPE_NM
+            , rcm.REG_SEND_START_DATE
+            , rcm.REG_SEND_START_TIME
+            , IF(td.TMP_DTL_TYPE = 'FTL' AND td.TMP_DTL_ATTACH_YN = 'Y', 'FTLP', IF(td.TMP_DTL_TYPE = 'ATL' AND td.TMP_DTL_ATTACH_YN = 'Y', 'ATLP', td.TMP_DTL_TYPE)) AS TMP_DTL_TYPE
+            , (CASE
+                WHEN td.TMP_DTL_TYPE = 'ATL' AND td.TMP_DTL_ATTACH_YN = 'Y' THEN '알림톡+IMG'
+				WHEN td.TMP_DTL_TYPE = 'ATL' AND td.TMP_DTL_ATTACH_YN = 'N' THEN '알림톡'
+                WHEN td.TMP_DTL_TYPE = 'FTL' AND td.TMP_DTL_ATTACH_YN = 'Y' THEN '친구톡+IMG'
+				WHEN td.TMP_DTL_TYPE = 'FTL' AND td.TMP_DTL_ATTACH_YN = 'N' THEN '친구톡'
+                WHEN td.TMP_DTL_TYPE = 'EML' THEN '이메일'
+                ELSE td.TMP_DTL_TYPE
+                END) AS TMP_DTL_TYPE_NM
+            , am.ADVER_ID
+        FROM OV_REG_CAMPAIGN_MST rcm
+            INNER JOIN OV_TEMPLATE_DTL td ON (rcm.TEMPLATE_ROWID = td.TMP_MST_ROWID)
+            <!-- LEFT JOIN OV_TEMPLATE_ATT ta ON (td.ROWID = ta.TMP_DTL_ROWID) -->
+            INNER JOIN OV_ACCT_MST am ON (rcm.ACCT_ROWID = am.ROWID)
+        WHERE rcm.ROWID = #{campRowid}
+        LIMIT 1
+    </select>
+    
+</mapper>

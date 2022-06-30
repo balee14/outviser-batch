@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.common.action.mapper.StartupMapper">
+
+	<!-- 코드 전체 가져오기 -->
+    <select id="selectCodeList" resultType="dataMap">
+		/*process.startup.selectCodeList*/
+		SELECT
+			ocm.MST_CODE 
+			, ocd.CODE 
+			, ocd.NAME
+			, ocd.ORDER_SEQ
+		FROM OV_CODE_MST ocm
+			LEFT JOIN OV_CODE_DTL ocd ON (ocm.ROWID = ocd.MST_ROWID)
+		WHERE ocm.DEL_YN = 'N'
+			AND ocd.DEL_YN  = 'N'
+			AND ocm.MST_CODE IN ('DATAMAP_RSMSG', 'TMP_USE_TYPE_CODE')
+		ORDER BY ocm.ROWID, ocd.ORDER_SEQ, ocd.code
+    </select>
+    
+    <!-- 캠페인 조건별 난이도 점수 가져오기 -->
+    <select id="selectCampCondScoreList" resultType="dataMap">
+		/*process.startup.selectCampCondScoreList*/
+		SELECT COND_KEY, COND_NAME, SCORE
+		FROM OV_CAMP_COND_SCORE
+		WHERE DEL_YN = 'N'
+    </select>
+
+</mapper>

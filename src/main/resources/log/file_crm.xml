@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<appender name="fileCrmAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+	<filter class="com.enliple.outviserbatch.common.util.crmLogFilter"/>
+	<!-- Rolling -->
+	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+		<fileNamePattern>${LOG_DIR_CRM}/${LOG_FILENAME_CRM}.%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+		<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+			<maxFileSize>500MB</maxFileSize>
+		</timeBasedFileNamingAndTriggeringPolicy>
+		<!-- <maxHistory>30</maxHistory> -->
+	</rollingPolicy>
+
+	<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+		<charset>${CHARSET}</charset>
+		<pattern>${PATTERN}</pattern>
+	</encoder>
+</appender>

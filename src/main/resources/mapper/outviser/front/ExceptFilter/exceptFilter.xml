@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enliple.outviserbatch.outviser.front.exceptFilter.mapper.ExceptFilterMapper">
+    
+    <select id="selectExceptInfo" parameterType="dataMap" resultType="dataMap">
+        SELECT  ROWID
+            ,   ACCT_LOGIN_ID
+            ,   ACCT_EXC_DAYS
+            ,	ACCT_EXC_TMP_YN
+        FROM    OV_ACCT_MST
+        WHERE   ROWID = #{sessionUserRowId}
+        AND     NVL(NULLIF(ACCT_DEL_YN, ''), 'N') = 'N'
+    </select>
+    
+    <!-- 주소록 임시 테이블 삭제 -->
+    <insert id="dropFilterData" parameterType="java.util.Map">
+        DROP TABLE ${tempName}
+    </insert>
+    
+    <!-- 주소록 임시테이블 생성 -->
+    <insert id="createAddressFilterData" parameterType="java.util.Map">
+        CREATE TABLE ${tempName} (
+        		ROWID			INT(11)		 unsigned NOT NULL AUTO_INCREMENT
+       		,   REQ_NAME		VARCHAR(500)
+            ,   REQ_PHONE_NO    VARCHAR(128) DEFAULT NULL
+            ,   REQ_EMAIL       VARCHAR(400) DEFAULT NULL
+            ,	PARAM1       	VARCHAR(100)
+            ,	PARAM2	        VARCHAR(150)
+            ,	PARAM3  	    VARCHAR(100)
+            ,	PARAM4      	VARCHAR(100)
+            ,	PARAM5       	VARCHAR(100)
+            ,	PARAM6       	VARCHAR(100)
+            ,	PARAM7       	VARCHAR(100)
+            ,	PARAM8       	VARCHAR(100)
+            ,	PARAM9       	VARCHAR(100)
+            ,	PARAM10      	VARCHAR(100)
+            ,	PARAM11      	VARCHAR(100)
+            ,	PARAM12      	VARCHAR(100)
+            ,	PARAM13      	VARCHAR(100)
+            ,	PARAM14      	VARCHAR(100)
+            ,	PARAM15      	VARCHAR(100)
+            ,	PARAM16      	VARCHAR(100)
+            ,	PARAM17      	VARCHAR(100)
+            ,	PARAM18      	VARCHAR(100)
+            ,	PARAM19      	VARCHAR(100)
+            ,	PARAM20      	VARCHAR(100)
+            ,	PRIMARY KEY (`ROWID`)
+			,   KEY `TMP_ADDRFILTER_IDX_01` (`REQ_PHONE_NO`)
+			,   KEY `TMP_ADDRFILTER_IDX_02` (`REQ_EMAIL`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4
+
+    </insert>
+    
+    <!-- 주소록 임시 테이블에 기록 -->
+    <insert id="insertAddressFilterList" parameterType="java.util.Map">
+        INSERT INTO ${tempName}
+         (
+         	REQ_PHONE_NO, REQ_EMAIL, REQ_NAME
+         	, PARAM1, PARAM2, PARAM3, PARAM4, PARAM5, PARAM6, PARAM7, PARAM8, PARAM9, PARAM10
+         	, PARAM11, PARAM12, PARAM13, PARAM14, PARAM15, PARAM16, PARAM17, PARAM18, PARAM19, PARAM20
+         )
+        VALUES
+        <foreach collection="datas" item="datas" separator=",">
+        	(	
+        			FN_ENCRYPT(TRIM(REPLACE(#{datas.phoneNo}, '-', '')))
+        		,	FN_ENCRYPT(#{datas.email})
+        		,	#{datas.name}
+        		,	#{datas.var1}
+        		,	#{datas.var2}
+        		,	#{datas.var3}
+        		,	#{datas.var4}
+        		,	#{datas.var5}
+        		,	#{datas.var6}
+        		,	#{datas.var7}
+        		,	#{datas.var8}
+        		,	#{datas.var9}
+        		,	#{datas.var10}
+        		,	#{datas.var11}
+        		,	#{datas.var12}
+        		,	#{datas.var13}
+        		,	#{datas.var14}
+        		,	#{datas.var15}
+        		,	#{datas.var16}
+        		,	#{datas.var17}
+        		,	#{datas.var18}
+        		,	#{datas.var19}
+        		,	#{datas.var20}
+        	)
+        </foreach>
+        ;
+				
+    </insert>
+    
+    <!-- 주소록 임시 테이블 삭제 -->
+    <insert id="dropAddressFilterData" parameterType="java.util.Map">
+        DROP TABLE ${tempName}
+    </insert>
+    
+    <!-- 주소록 차집합 데이터 -->
+    <select id="selectAddressFilterList" resultType="DataMap" parameterType="java.util.Map">
+		SELECT 
+			REQ_NAME AS name, FN_DECRYPT(REQ_PHONE_NO) AS phoneNo, FN_DECRYPT(REQ_EMAIL) AS email 
+			,	PARAM1 AS var1,	PARAM2 AS var2,	PARAM3 AS var3,	PARAM4 AS var4,	PARAM5 AS var5
+			,	PARAM6 AS var6,	PARAM7 AS var7,	PARAM8 AS var8,	PARAM9 AS var9,	PARAM10 AS var10
+			,	PARAM11 AS var11,	PARAM12 AS var12,	PARAM13 AS var13,	PARAM14 AS var14,	PARAM15 AS var15
+			,	PARAM16 AS var16,	PARAM17 AS var17,	PARAM18 AS var18,	PARAM19 AS var19,	PARAM20 AS var20
+		FROM ${tempName} AS TMP 
+		LEFT JOIN
+			(
+				(	
+					SELECT
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                REQ_EMAIL AS check_key
+		            </when>
+		            <otherwise>
+		                REQ_PHONE_NO AS check_key
+		            </otherwise>
+		        </choose> 
+					FROM ${tempName} 
+					WHERE ROWID > 0
+				)
+				EXCEPT
+				(
+					SELECT 
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                REQ_EMAIL AS check_key
+		            </when>
+		            <otherwise>
+		                REQ_PHONE_NO AS check_key
+		            </otherwise>
+		        </choose>
+					FROM OV_REQUEST_SEND 
+					WHERE 
+						REQ_CREATE_DATE >= DATE_ADD(NOW(), INTERVAL -#{checkDays} DAY) 
+						AND ACCT_ROWID = #{sessionUserRowId}
+					<if test='checkTemplete != null and checkTemplete != "" and checkTemplete == "Y"'> 
+						AND TMP_DTL_ROWID = #{tmpDtlRowid}
+					</if>
+					<choose>
+			            <when test='tmpDtlType.equals("EML")'>
+			                AND TMP_DTL_TYPE = 'EML'
+			            </when>
+			            <otherwise>
+			                AND TMP_DTL_TYPE != 'EML'
+			            </otherwise>
+			        </choose>
+				)
+			) AS TMP_FULL
+		<choose>
+            <when test='tmpDtlType.equals("EML")'>
+                ON TMP_FULL.check_key = TMP.REQ_EMAIL
+            </when>
+            <otherwise>
+                ON TMP_FULL.check_key = TMP.REQ_PHONE_NO
+            </otherwise>
+        </choose>
+		WHERE TMP.ROWID > 0
+		AND TMP_FULL.check_key IS NOT NULL
+		;
+    </select>
+    
+    <!-- 주소록 교집합 데이터 -->
+    <select id="selectAddressIntersectFilterList" resultType="DataMap" parameterType="java.util.Map">
+		SELECT 
+			REQ_NAME AS name, FN_DECRYPT(REQ_PHONE_NO) AS phoneNo, FN_DECRYPT(REQ_EMAIL) AS email 
+			,	PARAM1 AS var1,	PARAM2 AS var2,	PARAM3 AS var3,	PARAM4 AS var4,	PARAM5 AS var5
+			,	PARAM6 AS var6,	PARAM7 AS var7,	PARAM8 AS var8,	PARAM9 AS var9,	PARAM10 AS var10
+			,	PARAM11 AS var11,	PARAM12 AS var12,	PARAM13 AS var13,	PARAM14 AS var14,	PARAM15 AS var15
+			,	PARAM16 AS var16,	PARAM17 AS var17,	PARAM18 AS var18,	PARAM19 AS var19,	PARAM20 AS var20
+		FROM ${tempName} AS TMP 
+		LEFT JOIN
+			(
+				(	
+					SELECT
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                REQ_EMAIL AS check_key
+		            </when>
+		            <otherwise>
+		                REQ_PHONE_NO AS check_key
+		            </otherwise>
+		        </choose> 
+					FROM ${tempName} 
+					WHERE ROWID > 0
+				)
+				INTERSECT
+				(
+					SELECT 
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                REQ_EMAIL AS check_key
+		            </when>
+		            <otherwise>
+		                REQ_PHONE_NO AS check_key
+		            </otherwise>
+		        </choose>
+					FROM OV_REQUEST_SEND 
+					WHERE 
+						REQ_CREATE_DATE >= DATE_ADD(NOW(), INTERVAL -#{checkDays} DAY) 
+						AND ACCT_ROWID = #{sessionUserRowId}
+					<if test='checkTemplete != null and checkTemplete != "" and checkTemplete == "Y"'> 
+						AND TMP_DTL_ROWID = #{tmpDtlRowid}
+					</if>
+					<choose>
+			            <when test='tmpDtlType.equals("EML")'>
+			                AND TMP_DTL_TYPE = 'EML'
+			            </when>
+			            <otherwise>
+			                AND TMP_DTL_TYPE != 'EML'
+			            </otherwise>
+			        </choose>
+				)
+			) AS TMP_FULL
+		<choose>
+            <when test='tmpDtlType.equals("EML")'>
+                ON TMP_FULL.check_key = TMP.REQ_EMAIL
+            </when>
+            <otherwise>
+                ON TMP_FULL.check_key = TMP.REQ_PHONE_NO
+            </otherwise>
+        </choose>
+		WHERE TMP.ROWID > 0
+		AND TMP_FULL.check_key IS NOT NULL
+		;
+    </select>
+    
+    
+    <!-- 교집합을 하기 위한 데이터 테이블 생성 -->
+    <insert id="createCrmIntersectFilterData" parameterType="java.util.Map">
+        CREATE TABLE ${tempName} (
+       		ROWID			INT(11)		 unsigned NOT NULL AUTO_INCREMENT
+			,	phoneNo				VARCHAR(128) DEFAULT NULL
+			,	email				VARCHAR(400) DEFAULT NULL
+            ,	PRIMARY KEY (`ROWID`)
+			,   KEY `TMP_ADDRFILTER_IDX_01` (`phoneNo`)
+			,   KEY `TMP_ADDRFILTER_IDX_02` (`email`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
+		;
+    </insert>
+    
+    <!-- 폰번호와 이메일만 교집합에 필요함 - 기존에 쓰던 데이터가 만들어지기 전이라 만들어야 함 -->
+    <insert id="insertCrmIntersectFilterList" parameterType="java.util.Map">
+        INSERT INTO ${tempName}
+		(
+			phoneNo, email
+		)
+        VALUES
+		<foreach collection="datas" item="datas" separator=",">
+		(	
+			FN_ENCRYPT(TRIM(REPLACE(#{datas.phoneNo}, '-', ''))),	FN_ENCRYPT(#{datas.email})
+		)
+		</foreach>
+		;
+    </insert>
+    
+    <!-- 수정해야함 -->
+    <insert id="dropCrmIntersectFilterData" parameterType="java.util.Map">
+        DROP TABLE ${tempName}
+    </insert>
+    
+    <!-- 교집합 데이터 가져오기 -->
+    <select id="selectCrmIntersectFilterList" resultType="DataMap" parameterType="java.util.Map">
+        SELECT FN_DECRYPT(check_key) AS checkKey FROM 
+        (
+			(	
+				SELECT
+			<choose>
+	            <when test='tmpDtlType.equals("EML")'>
+	                email AS check_key
+	            </when>
+	            <otherwise>
+	                phoneNo AS check_key
+	            </otherwise>
+	        </choose> 
+				FROM ${tempName} 
+				WHERE ROWID > 0
+			)
+			INTERSECT
+			(
+				SELECT 
+			<choose>
+	            <when test='tmpDtlType.equals("EML")'>
+	                REQ_EMAIL AS check_key
+	            </when>
+	            <otherwise>
+	                REQ_PHONE_NO AS check_key
+	            </otherwise>
+	        </choose>
+				FROM OV_REQUEST_SEND 
+				WHERE 
+					REQ_CREATE_DATE >= DATE_ADD(NOW(), INTERVAL -#{checkDays} DAY) 
+					AND ACCT_ROWID = #{sessionUserRowId}
+				<if test='checkTemplete != null and checkTemplete != "" and checkTemplete == "Y"'> 
+					AND TMP_DTL_ROWID = #{tmpDtlRowid}
+				</if>
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                AND TMP_DTL_TYPE = 'EML'
+		            </when>
+		            <otherwise>
+		                AND TMP_DTL_TYPE != 'EML'
+		            </otherwise>
+		        </choose>
+			)
+		) AS A
+    </select>
+    
+    
+    
+    
+    
+<!--
+    <insert id="createCrmFilterData" parameterType="java.util.Map">
+        CREATE TABLE ${tempName} (
+       		ROWID			INT(11)		 unsigned NOT NULL AUTO_INCREMENT
+    		,	name				VARCHAR(500)
+			,	phoneNo				VARCHAR(128) DEFAULT NULL
+			,	email				VARCHAR(400) DEFAULT NULL
+			,	userSeq				VARCHAR(100) DEFAULT NULL
+			,	userId				VARCHAR(100) DEFAULT NULL
+			,	auid				VARCHAR(100) DEFAULT NULL
+			,	crossDeviceYn		VARCHAR(100) DEFAULT NULL
+			,	adverId				VARCHAR(100) DEFAULT NULL
+			,	combinedUserNo		VARCHAR(100) DEFAULT NULL
+			,	moid				VARCHAR(100) DEFAULT NULL
+			,	adid				VARCHAR(100) DEFAULT NULL
+			,	status				VARCHAR(100) DEFAULT NULL
+			,	userExpireDttm		VARCHAR(100) DEFAULT NULL
+			,	gender				VARCHAR(100) DEFAULT NULL
+			,	genderMobon			VARCHAR(100) DEFAULT NULL
+			,	birthday			VARCHAR(100) DEFAULT NULL
+			,	merryYn				VARCHAR(100) DEFAULT NULL
+			,	userRank			VARCHAR(100) DEFAULT NULL
+			,	device				VARCHAR(100) DEFAULT NULL
+			,	os					VARCHAR(100) DEFAULT NULL
+			,	browser				VARCHAR(100) DEFAULT NULL
+			,	visitCnt			VARCHAR(100) DEFAULT NULL
+			,	geolocationCity		VARCHAR(100) DEFAULT NULL
+			,	geolocationRegion	VARCHAR(100) DEFAULT NULL
+			,	telecomInfo			VARCHAR(100) DEFAULT NULL
+			,	emailRcvYn			VARCHAR(100) DEFAULT NULL
+			,	smsRcvYn			VARCHAR(100) DEFAULT NULL
+			,	appPushRcvYn		VARCHAR(100) DEFAULT NULL
+			,	notiRcvYn			VARCHAR(100) DEFAULT NULL
+			,	webPushRcvYn		VARCHAR(100) DEFAULT NULL
+			,	userJoinDttm		VARCHAR(100) DEFAULT NULL
+			,	lastVisitDttm		VARCHAR(100) DEFAULT NULL
+			,	userAltDttm			VARCHAR(100) DEFAULT NULL
+			,	ageGroup			VARCHAR(100) DEFAULT NULL
+			,	ageGroupMobon		VARCHAR(100) DEFAULT NULL
+			,	regDttm				VARCHAR(100) DEFAULT NULL
+			,	regUserId			VARCHAR(100) DEFAULT NULL
+			,	altDttm				VARCHAR(100) DEFAULT NULL
+			,	altUserId			VARCHAR(100) DEFAULT NULL
+			,	auidRegDttm			VARCHAR(100) DEFAULT NULL
+			,	audienceCd1			VARCHAR(100) DEFAULT NULL
+			,	audienceCd2			VARCHAR(100) DEFAULT NULL
+			,	mobonAltDttm		VARCHAR(100) DEFAULT NULL
+            ,	PRIMARY KEY (`ROWID`)
+			,   KEY `TMP_ADDRFILTER_IDX_01` (`phoneNo`)
+			,   KEY `TMP_ADDRFILTER_IDX_02` (`email`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
+
+    </insert>
+    
+    <insert id="insertCrmFilterList" parameterType="java.util.Map">
+        INSERT INTO ${tempName}
+		(
+			
+			phoneNo, email, name,
+			userSeq, userId, auid, crossDeviceYn, adverId, combinedUserNo, moid, adid, 
+			status, userExpireDttm, gender, genderMobon, birthday, merryYn, userRank, 
+			device, os, browser, visitCnt, geolocationCity, geolocationRegion, telecomInfo,
+			emailRcvYn, smsRcvYn, appPushRcvYn, notiRcvYn, webPushRcvYn, userJoinDttm, lastVisitDttm, 
+			userAltDttm, ageGroup, ageGroupMobon, regDttm, regUserId, altDttm, altUserId, auidRegDttm, 
+			audienceCd1, audienceCd2, mobonAltDttm
+		    		
+		)
+        VALUES
+		<foreach collection="datas" item="datas" separator=",">
+		(	
+			FN_ENCRYPT(TRIM(REPLACE(#{datas.phoneNo}, '-', ''))),	FN_ENCRYPT(#{datas.email}), #{datas.name},
+			#{datas.userSeq}, #{datas.userId}, #{datas.auid}, #{datas.crossDeviceYn}, #{datas.adverId}, #{datas.combinedUserNo}, #{datas.moid}, #{datas.adid}, 
+			#{datas.status}, #{datas.userExpireDttm}, #{datas.gender}, #{datas.genderMobon}, #{datas.birthday}, #{datas.merryYn}, #{datas.userRank}, 
+			#{datas.device}, #{datas.os}, #{datas.browser}, #{datas.visitCnt}, #{datas.geolocationCity}, #{datas.geolocationRegion}, #{datas.telecomInfo},
+			#{datas.emailRcvYn}, #{datas.smsRcvYn}, #{datas.appPushRcvYn}, #{datas.notiRcvYn}, #{datas.webPushRcvYn}, #{datas.userJoinDttm}, #{datas.lastVisitDttm}, 
+			#{datas.userAltDttm}, #{datas.ageGroup}, #{datas.ageGroupMobon}, #{datas.regDttm}, #{datas.regUserId}, #{datas.altDttm}, #{datas.altUserId}, #{auidRegDttm}, 
+			#{datas.audienceCd1}, #{datas.audienceCd2}, #{datas.mobonAltDttm}
+		)
+		</foreach>
+		;
+				
+    </insert>
+    
+    <insert id="dropCrmFilterData" parameterType="java.util.Map">
+        DROP TABLE ${tempName}
+    </insert>
+    
+    <select id="selectCrmFilterList" resultType="DataMap" parameterType="java.util.Map">
+		SELECT 
+			FN_ENCRYPT(TRIM(REPLACE(#{datas.phoneNo}, '-', ''))),	FN_ENCRYPT(#{datas.email})
+			
+			name, phoneNo, email,
+            userSeq, userId, auid, crossDeviceYn, adverId, combinedUserNo, moid, adid, 
+			status, userExpireDttm, gender, genderMobon, birthday, merryYn, userRank, 
+			device, os, browser, visitCnt, geolocationCity, geolocationRegion, telecomInfo,
+			emailRcvYn, smsRcvYn, appPushRcvYn, notiRcvYn, webPushRcvYn, userJoinDttm, lastVisitDttm, 
+			userAltDttm, ageGroup, ageGroupMobon, regDttm, regUserId, altDttm, altUserId, auidRegDttm, 
+			audienceCd1, audienceCd2, mobonAltDttm
+						
+		FROM ${tempName} AS TMP 
+		LEFT JOIN
+			(
+				(	
+					SELECT
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                email AS check_key
+		            </when>
+		            <otherwise>
+		                phoneNo AS check_key
+		            </otherwise>
+		        </choose> 
+					FROM ${tempName} 
+					WHERE ROWID > 0
+				)
+				EXCEPT
+				(
+					SELECT 
+				<choose>
+		            <when test='tmpDtlType.equals("EML")'>
+		                REQ_EMAIL AS check_key
+		            </when>
+		            <otherwise>
+		                REQ_PHONE_NO AS check_key
+		            </otherwise>
+		        </choose>
+					FROM OV_REQUEST_SEND 
+					WHERE 
+						REQ_CREATE_DATE >= DATE_ADD(NOW(), INTERVAL -#{checkDays} DAY) 
+						AND ACCT_ROWID = #{sessionUserRowId}
+					<if test='checkTemplete != null and checkTemplete != "" and checkTemplete == "Y"'> 
+						AND TMP_DTL_ROWID = #{tmpDtlRowid}
+					</if>
+					<choose>
+			            <when test='tmpDtlType.equals("EML")'>
+			                AND TMP_DTL_TYPE = 'EML'
+			            </when>
+			            <otherwise>
+			                AND TMP_DTL_TYPE != 'EML'
+			            </otherwise>
+			        </choose>
+				)
+			) AS TMP_FULL
+		<choose>
+            <when test='tmpDtlType.equals("EML")'>
+                ON TMP_FULL.check_key = TMP.email
+            </when>
+            <otherwise>
+                ON TMP_FULL.check_key = TMP.phoneNo
+            </otherwise>
+        </choose>
+		WHERE TMP.ROWID > 0
+		AND TMP_FULL.check_key IS NOT NULL
+		;
+    </select>
+    -->
+    
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.report.mapper.ScheduleReportMapper">
+    
+    <!--  -->
+    <select id="selectWeek" resultType="string">
+        /*enliple.ibot.outviser.schedule.common.selectWeek*/
+        SELECT  CONCAT( CASE
+                WHEN WEEKOFYEAR('${preDate}')
+                    = WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -1 MONTH))) THEN
+                -- 1월 1일이 포함된 주는 작년 마지막주로 편성되기도 하므로 작년 마지막 주와 같은 주면 이전 년도로 편성
+                        DATE_FORMAT(DATE_ADD('${preDate}', INTERVAL -1 MONTH), '%Y%m')
+                ELSE
+                    DATE_FORMAT('${preDate}', '%Y%m')
+                END
+            ,   WEEKOFYEAR('${preDate}') -- 현재주 - 저번달 마지막 주(CASE)
+                - (CASE
+                    WHEN WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -1 MONTH))) = 1 THEN
+                    -- 12월의 경우 마지막주의 요일이 월~수인경우 내년도 1주차로 잡힌다.
+                        0
+                    WHEN WEEKOFYEAR('${preDate}') 
+                        = WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -1 MONTH))) THEN
+                    -- 1월 첫주인 경우 작년도의 마지막 주로 편성 되는 경우가 있으므로 2개월 전의 마지막주로 계산 
+                        WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -2 MONTH)))
+                    WHEN WEEKOFYEAR('${preDate}')
+                        <![CDATA[<]]> WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -1 MONTH))) THEN
+                    -- 저번달의 마지막 주보다 지금의 주가 작으면 첫번째 주부터 시작이므로 차감이 없도록 해야한다.
+                        0
+                    ELSE
+                    -- 그외의 주 계산은 지금의 추자 - 저번달 마지막주의 주차로 계산한다.
+                        WEEKOFYEAR(LAST_DAY(DATE_ADD('${preDate}', INTERVAL -1 MONTH)))
+                    END)
+        )   AS YEAR_MONTH_WEEK
+    </select>
+    
+    
+    
+</mapper>

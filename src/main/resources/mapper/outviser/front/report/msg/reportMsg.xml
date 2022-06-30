@@ -1,0 +1,663 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.report.msg.mapper.ReportMsgMapper">
+    
+    <!--  -->
+    <insert id="insertMtsH" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.mts.insertMtsH*/
+        INSERT INTO OV_REPORT_MSG_H (
+                REPORT_DATE
+            ,   LONG_TYPE_DATA
+            ,   SHORT_TYPE_DATA
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ATLK_TEMPLATE_ROWID
+            ,   TOTAL_CNT
+            ,   SUCCED_CNT
+            ,   FAILED_CNT
+            ,   ATALK_TOTAL_CNT
+            ,   ATALK_SUCCED_CNT
+            ,   ATALK_FAILED_CNT
+            ,   FTALK_TOTAL_CNT
+            ,   FTALK_SUCCED_CNT
+            ,   FTALK_FAILED_CNT
+            ,   LMS_TOTAL_CNT
+            ,   LMS_SUCCED_CNT
+            ,   LMS_FAILED_CNT
+            ,   SMS_TOTAL_CNT
+            ,   SMS_SUCCED_CNT
+            ,   SMS_FAILED_CNT
+        )
+        WITH RECURSIVE W_TYPE_DATAS                                                                         AS (
+            SELECT CONCAT('${preDate}', ' 00')                                                              AS DAYS
+            UNION ALL
+            SELECT  DATE_ADD(W_TYPE_DATAS.DAYS, INTERVAL 1 HOUR)
+            FROM    W_TYPE_DATAS
+            WHERE   DATE_ADD(W_TYPE_DATAS.DAYS, INTERVAL 1 HOUR)
+                    <![CDATA[<]]> DATE_ADD(CONCAT('${preDate}', ' 00'), INTERVAL 1 DAY)
+        ),  W_ATALK_T                                                                                       AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE                                     
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_ATALK_MSG_LOG       A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_ATALK_BATCH_T                                                                                 AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE                                     
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_ATALK_MSG_LOG_BATCH_1       A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_FTALK_T                                                                                       AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_FTALK_MSG_LOG       A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_FTALK_BATCH_T                                                                                 AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_FTALK_MSG_LOG_BATCH_1       A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_LMS_T                                                                                         AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_MMS_MSG_LOG     A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_LMS_BATCH_T                                                                                   AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 1, 0))                                                     AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '1000', 0, 1))                                                     AS FAILED_CNT
+            FROM    MTS_MMS_MSG_LOG_BATCH_1     A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_SMS_T                                                                                         AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '00', 1, 0))                                                       AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '00', 0, 1))                                                       AS FAILED_CNT
+            FROM    MTS_SMS_MSG_LOG A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_SMS_BATCH_T                                                                                   AS (
+            SELECT  DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')                                                    AS LONG_TYPE_DATA
+                ,   A.TRAN_ETC1                                                                             AS ACCT_ROWID
+                ,   A.TRAN_ETC2                                                                             AS CAMP_ROWID
+                ,   A.TRAN_ETC3                                                                             AS ATLK_TEMPLATE_ROWID
+                ,   A.TRAN_TYPE                                                                             AS TRAN_TYPE
+                ,   SUM(1)                                                                                  AS TOTAL_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '00', 1, 0))                                                       AS SUCCED_CNT
+                ,   SUM(IF(A.TRAN_RSLT = '00', 0, 1))                                                       AS FAILED_CNT
+            FROM    MTS_SMS_MSG_LOG_BATCH_1 A
+            WHERE   1 = 1
+            AND     A.TRAN_DATE <![CDATA[>=]]> STR_TO_DATE(CONCAT('${preDate}', ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND     A.TRAN_DATE <![CDATA[<=]]> STR_TO_DATE(CONCAT('${preDate}', ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            GROUP BY
+                    DATE_FORMAT(A.TRAN_DATE, '%Y%m%d%H')
+                ,   A.TRAN_ETC1
+                ,   A.TRAN_ETC2
+                ,   A.TRAN_ETC3
+                ,   A.TRAN_TYPE
+        ),  W_REPORT_DATA                                                                                   AS (
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_ATALK_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_ATALK_BATCH_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_FTALK_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_FTALK_BATCH_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_LMS_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_LMS_BATCH_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_SMS_T
+            UNION ALL
+            SELECT  LONG_TYPE_DATA  ,   ACCT_ROWID  ,   CAMP_ROWID  ,   ATLK_TEMPLATE_ROWID
+                ,   TRAN_TYPE       ,   TOTAL_CNT   ,   SUCCED_CNT  ,   FAILED_CNT
+            FROM    W_SMS_BATCH_T
+        )
+        SELECT  DATE_FORMAT(A.DAYS, '%Y%m%d')                                                               AS REPORT_DATE
+            ,   DATE_FORMAT(A.DAYS, '%Y%m%d%H')                                                             AS LONG_TYPE_DATA
+            ,   DATE_FORMAT(A.DAYS, '%d%H')                                                                 AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID                                                                                AS ACCT_ROWID
+            ,   B.CAMP_ROWID                                                                                AS CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID                                                                       AS ATLK_TEMPLATE_ROWID
+            ,   NVL(SUM(B.TOTAL_CNT), 0)                                                                    AS TOTAL_CNT
+            ,   NVL(SUM(B.SUCCED_CNT), 0)                                                                   AS SUCCED_CNT
+            ,   NVL(SUM(B.FAILED_CNT), 0)                                                                   AS FAILED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '5', B.TOTAL_CNT, 0)), 0)                                          AS ATALK_TOTAL_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '5', B.SUCCED_CNT, 0)), 0)                                         AS ATALK_SUCCED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '5', B.FAILED_CNT, 0)), 0)                                         AS ATALK_FAILED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '6', B.TOTAL_CNT, 0)), 0)                                          AS FTALK_TOTAL_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '6', B.SUCCED_CNT, 0)), 0)                                         AS FTALK_SUCCED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '6', B.FAILED_CNT, 0)), 0)                                         AS FTALK_FAILED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '4', B.TOTAL_CNT, 0)), 0)                                          AS LMS_TOTAL_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '4', B.SUCCED_CNT, 0)), 0)                                         AS LMS_SUCCED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '4', B.FAILED_CNT, 0)), 0)                                         AS LMS_FAILED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '0', B.TOTAL_CNT, 0)), 0)                                          AS SMS_TOTAL_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '0', B.SUCCED_CNT, 0)), 0)                                         AS SMS_SUCCED_CNT
+            ,   NVL(SUM(IF(B.TRAN_TYPE = '0', B.FAILED_CNT, 0)), 0)                                         AS SMS_FAILED_CNT
+        FROM    W_TYPE_DATAS    A
+        LEFT OUTER JOIN
+                W_REPORT_DATA   B
+        ON      DATE_FORMAT(A.DAYS, '%Y%m%d%H') = B.LONG_TYPE_DATA
+        GROUP BY
+                DATE_FORMAT(A.DAYS, '%Y%m%d')
+            ,   DATE_FORMAT(A.DAYS, '%Y%m%d%H')
+            ,   DATE_FORMAT(A.DAYS, '%d%H')
+            ,   B.ACCT_ROWID
+            ,   B.CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID
+    </insert>
+    
+    <!--  -->
+    <insert id="insertMtsD" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.mts.insertMtsD*/
+        INSERT INTO OV_REPORT_MSG_D (
+                REPORT_DATE
+            ,   LONG_TYPE_DATA
+            ,   SHORT_TYPE_DATA
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ATLK_TEMPLATE_ROWID
+            ,   TOTAL_CNT
+            ,   SUCCED_CNT
+            ,   FAILED_CNT
+            ,   ATALK_TOTAL_CNT
+            ,   ATALK_SUCCED_CNT
+            ,   ATALK_FAILED_CNT
+            ,   FTALK_TOTAL_CNT
+            ,   FTALK_SUCCED_CNT
+            ,   FTALK_FAILED_CNT
+            ,   LMS_TOTAL_CNT
+            ,   LMS_SUCCED_CNT
+            ,   LMS_FAILED_CNT
+            ,   SMS_TOTAL_CNT
+            ,   SMS_SUCCED_CNT
+            ,   SMS_FAILED_CNT
+        )
+        WITH    W_DATE                                                                                      AS (
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+            FROM    DUAL
+        )
+        SELECT  A.REPORT_DATE                                                                               AS REPORT_DATE
+            ,   A.REPORT_DATE                                                                               AS LONG_TYPE_DATA
+            ,   SUBSTR(A.REPORT_DATE, 5, 4)                                                                 AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID                                                                                AS ACCT_ROWID
+            ,   B.CAMP_ROWID                                                                                AS CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID                                                                       AS ATLK_TEMPLATE_ROWID
+            ,   NVL(SUM(B.TOTAL_CNT), 0)                                                                    AS TOTAL_CNT
+            ,   NVL(SUM(B.SUCCED_CNT), 0)                                                                   AS SUCCED_CNT
+            ,   NVL(SUM(B.FAILED_CNT), 0)                                                                   AS FAILED_CNT
+            ,   NVL(SUM(B.ATALK_TOTAL_CNT), 0)                                                              AS ATALK_TOTAL_CNT
+            ,   NVL(SUM(B.ATALK_SUCCED_CNT), 0)                                                             AS ATALK_SUCCED_CNT
+            ,   NVL(SUM(B.ATALK_FAILED_CNT), 0)                                                             AS ATALK_FAILED_CNT
+            ,   NVL(SUM(B.FTALK_TOTAL_CNT), 0)                                                              AS FTALK_TOTAL_CNT
+            ,   NVL(SUM(B.FTALK_SUCCED_CNT), 0)                                                             AS FTALK_SUCCED_CNT
+            ,   NVL(SUM(B.FTALK_FAILED_CNT), 0)                                                             AS FTALK_FAILED_CNT
+            ,   NVL(SUM(B.LMS_TOTAL_CNT), 0)                                                                AS LMS_TOTAL_CNT
+            ,   NVL(SUM(B.LMS_SUCCED_CNT), 0)                                                               AS LMS_SUCCED_CNT
+            ,   NVL(SUM(B.LMS_FAILED_CNT), 0)                                                               AS LMS_FAILED_CNT
+            ,   NVL(SUM(B.SMS_TOTAL_CNT), 0)                                                                AS SMS_TOTAL_CNT
+            ,   NVL(SUM(B.SMS_SUCCED_CNT), 0)                                                               AS SMS_SUCCED_CNT
+            ,   NVL(SUM(B.SMS_FAILED_CNT), 0)                                                               AS SMS_FAILED_CNT
+        FROM    W_DATE          A
+        LEFT OUTER JOIN
+                OV_REPORT_MSG_H B
+        ON      A.REPORT_DATE = B.REPORT_DATE
+        AND     B.REPORT_DATE = REPLACE('${preDate}', '-', '')
+        GROUP BY
+                A.REPORT_DATE
+            ,   A.REPORT_DATE
+            ,   SUBSTR(A.REPORT_DATE, 5, 4)
+            ,   B.ACCT_ROWID
+            ,   B.CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID
+    </insert>
+    
+    <!--  -->
+    <insert id="insertMtsW" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.mts.insertMtsW*/
+        INSERT INTO OV_REPORT_MSG_W (
+                REPORT_DATE
+            ,   LONG_TYPE_DATA
+            ,   SHORT_TYPE_DATA
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ATLK_TEMPLATE_ROWID
+            ,   TOTAL_CNT
+            ,   SUCCED_CNT
+            ,   FAILED_CNT
+            ,   ATALK_TOTAL_CNT
+            ,   ATALK_SUCCED_CNT
+            ,   ATALK_FAILED_CNT
+            ,   FTALK_TOTAL_CNT
+            ,   FTALK_SUCCED_CNT
+            ,   FTALK_FAILED_CNT
+            ,   LMS_TOTAL_CNT
+            ,   LMS_SUCCED_CNT
+            ,   LMS_FAILED_CNT
+            ,   SMS_TOTAL_CNT
+            ,   SMS_SUCCED_CNT
+            ,   SMS_FAILED_CNT
+        )
+        WITH    W_DATE                                                                                      AS (
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+                ,   '${yearMonthWeek}'                                                                      AS YEAR_MONTH_WEEK
+            FROM    DUAL
+        ),      W_LAST_DATA                                                                                 AS (
+            -- 주간 마지막 데이터와 오늘자 합하기
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_W
+            WHERE   REPORT_DATE = (
+                        SELECT  MAX(REPORT_DATE)
+                        FROM    OV_REPORT_MSG_W
+                        WHERE   LONG_TYPE_DATA = '${yearMonthWeek}'
+                    )
+            UNION ALL
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_D
+            WHERE   REPORT_DATE = REPLACE('${preDate}', '-', '')
+        )
+        SELECT  A.REPORT_DATE                                                                               AS REPORT_DATE
+            ,   A.YEAR_MONTH_WEEK                                                                           AS LONG_TYPE_DATA
+            ,   SUBSTR(YEAR_MONTH_WEEK, 5, 3)                                                               AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID                                                                                AS ACCT_ROWID
+            ,   B.CAMP_ROWID                                                                                AS CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID                                                                       AS ATLK_TEMPLATE_ROWID
+            ,   NVL(SUM(B.TOTAL_CNT), 0)                                                                    AS TOTAL_CNT
+            ,   NVL(SUM(B.SUCCED_CNT), 0)                                                                   AS SUCCED_CNT
+            ,   NVL(SUM(B.FAILED_CNT), 0)                                                                   AS FAILED_CNT
+            ,   NVL(SUM(B.ATALK_TOTAL_CNT), 0)                                                              AS ATALK_TOTAL_CNT
+            ,   NVL(SUM(B.ATALK_SUCCED_CNT), 0)                                                             AS ATALK_SUCCED_CNT
+            ,   NVL(SUM(B.ATALK_FAILED_CNT), 0)                                                             AS ATALK_FAILED_CNT
+            ,   NVL(SUM(B.FTALK_TOTAL_CNT), 0)                                                              AS FTALK_TOTAL_CNT
+            ,   NVL(SUM(B.FTALK_SUCCED_CNT), 0)                                                             AS FTALK_SUCCED_CNT
+            ,   NVL(SUM(B.FTALK_FAILED_CNT), 0)                                                             AS FTALK_FAILED_CNT
+            ,   NVL(SUM(B.LMS_TOTAL_CNT), 0)                                                                AS LMS_TOTAL_CNT
+            ,   NVL(SUM(B.LMS_SUCCED_CNT), 0)                                                               AS LMS_SUCCED_CNT
+            ,   NVL(SUM(B.LMS_FAILED_CNT), 0)                                                               AS LMS_FAILED_CNT
+            ,   NVL(SUM(B.SMS_TOTAL_CNT), 0)                                                                AS SMS_TOTAL_CNT
+            ,   NVL(SUM(B.SMS_SUCCED_CNT), 0)                                                               AS SMS_SUCCED_CNT
+            ,   NVL(SUM(B.SMS_FAILED_CNT), 0)                                                               AS SMS_FAILED_CNT   
+        FROM    W_DATE      A
+        LEFT OUTER JOIN
+                W_LAST_DATA B
+        ON      A.REPORT_DATE = B.REPORT_DATE
+        AND     B.REPORT_DATE = REPLACE('${preDate}', '-', '')
+        GROUP BY
+                A.REPORT_DATE
+            ,   A.YEAR_MONTH_WEEK
+            ,   SUBSTR(YEAR_MONTH_WEEK, 5, 3)
+            ,   B.ACCT_ROWID
+            ,   B.CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID
+    </insert>
+    
+    <!--  -->
+    <insert id="insertMtsM" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.mts.insertMtsM*/
+        INSERT INTO OV_REPORT_MSG_M (
+                REPORT_DATE
+            ,   LONG_TYPE_DATA
+            ,   SHORT_TYPE_DATA
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ATLK_TEMPLATE_ROWID
+            ,   TOTAL_CNT
+            ,   SUCCED_CNT
+            ,   FAILED_CNT
+            ,   ATALK_TOTAL_CNT
+            ,   ATALK_SUCCED_CNT
+            ,   ATALK_FAILED_CNT
+            ,   FTALK_TOTAL_CNT
+            ,   FTALK_SUCCED_CNT
+            ,   FTALK_FAILED_CNT
+            ,   LMS_TOTAL_CNT
+            ,   LMS_SUCCED_CNT
+            ,   LMS_FAILED_CNT
+            ,   SMS_TOTAL_CNT
+            ,   SMS_SUCCED_CNT
+            ,   SMS_FAILED_CNT
+        )
+        WITH    W_DATE                                                                                      AS (
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+            FROM    DUAL
+        ),      W_LAST_DATA AS (
+            SELECT  REPLACE('${preDate}', '-', '') AS REPORT_DATE
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_M
+            WHERE   REPORT_DATE = (
+                        SELECT  MAX(Z.REPORT_DATE)
+                        FROM    OV_REPORT_MSG_M Z
+                        WHERE   Z.LONG_TYPE_DATA = SUBSTR(REPLACE('${preDate}', '-', ''), 1, 6)
+                    )
+            UNION ALL
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_D
+            WHERE   REPORT_DATE = REPLACE('${preDate}', '-', '')
+        )
+        SELECT  A.REPORT_DATE                                                                               AS REPORT_DATE
+            ,   SUBSTR(A.REPORT_DATE, 1, 6)                                                                 AS LONG_TYPE_DATA
+            ,   SUBSTR(A.REPORT_DATE, 1, 6)                                                                 AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID                                                                                AS ACCT_ROWID
+            ,   B.CAMP_ROWID                                                                                AS CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID                                                                       AS ATLK_TEMPLATE_ROWID
+            ,   NVL(SUM(B.TOTAL_CNT), 0)                                                                    AS TOTAL_CNT
+            ,   NVL(SUM(B.SUCCED_CNT), 0)                                                                   AS SUCCED_CNT
+            ,   NVL(SUM(B.FAILED_CNT), 0)                                                                   AS FAILED_CNT
+            ,   NVL(SUM(B.ATALK_TOTAL_CNT), 0)                                                              AS ATALK_TOTAL_CNT
+            ,   NVL(SUM(B.ATALK_SUCCED_CNT), 0)                                                             AS ATALK_SUCCED_CNT
+            ,   NVL(SUM(B.ATALK_FAILED_CNT), 0)                                                             AS ATALK_FAILED_CNT
+            ,   NVL(SUM(B.FTALK_TOTAL_CNT), 0)                                                              AS FTALK_TOTAL_CNT
+            ,   NVL(SUM(B.FTALK_SUCCED_CNT), 0)                                                             AS FTALK_SUCCED_CNT
+            ,   NVL(SUM(B.FTALK_FAILED_CNT), 0)                                                             AS FTALK_FAILED_CNT
+            ,   NVL(SUM(B.LMS_TOTAL_CNT), 0)                                                                AS LMS_TOTAL_CNT
+            ,   NVL(SUM(B.LMS_SUCCED_CNT), 0)                                                               AS LMS_SUCCED_CNT
+            ,   NVL(SUM(B.LMS_FAILED_CNT), 0)                                                               AS LMS_FAILED_CNT
+            ,   NVL(SUM(B.SMS_TOTAL_CNT), 0)                                                                AS SMS_TOTAL_CNT
+            ,   NVL(SUM(B.SMS_SUCCED_CNT), 0)                                                               AS SMS_SUCCED_CNT
+            ,   NVL(SUM(B.SMS_FAILED_CNT), 0)                                                               AS SMS_FAILED_CNT   
+        FROM    W_DATE      A
+        LEFT OUTER JOIN
+                W_LAST_DATA B
+        ON      A.REPORT_DATE = B.REPORT_DATE
+        AND     B.REPORT_DATE = REPLACE('${preDate}', '-', '')
+        GROUP BY
+                A.REPORT_DATE
+            ,   SUBSTR(A.REPORT_DATE, 1, 6)
+            ,   B.ACCT_ROWID
+            ,   B.CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID
+    </insert>
+    
+    <!--  -->
+    <insert id="insertMtsY" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.mts.insertMtsY*/
+        INSERT INTO OV_REPORT_MSG_Y (
+                REPORT_DATE
+            ,   LONG_TYPE_DATA
+            ,   SHORT_TYPE_DATA
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ATLK_TEMPLATE_ROWID
+            ,   TOTAL_CNT
+            ,   SUCCED_CNT
+            ,   FAILED_CNT
+            ,   ATALK_TOTAL_CNT
+            ,   ATALK_SUCCED_CNT
+            ,   ATALK_FAILED_CNT
+            ,   FTALK_TOTAL_CNT
+            ,   FTALK_SUCCED_CNT
+            ,   FTALK_FAILED_CNT
+            ,   LMS_TOTAL_CNT
+            ,   LMS_SUCCED_CNT
+            ,   LMS_FAILED_CNT
+            ,   SMS_TOTAL_CNT
+            ,   SMS_SUCCED_CNT
+            ,   SMS_FAILED_CNT
+        )
+        WITH    W_DATE                                                                                      AS (
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+            FROM    DUAL
+        ),      W_LAST_DATA AS (
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_Y
+            WHERE   REPORT_DATE = (
+                        SELECT  MAX(Z.REPORT_DATE)
+                        FROM    OV_REPORT_MSG_Y Z
+                        WHERE   LONG_TYPE_DATA = SUBSTR(REPLACE('${preDate}', '-', ''), 1, 4)
+                    )
+            UNION ALL
+            SELECT  REPLACE('${preDate}', '-', '')                                                          AS REPORT_DATE            
+                ,   ACCT_ROWID
+                ,   CAMP_ROWID
+                ,   ATLK_TEMPLATE_ROWID
+                ,   TOTAL_CNT
+                ,   SUCCED_CNT
+                ,   FAILED_CNT
+                ,   ATALK_TOTAL_CNT
+                ,   ATALK_SUCCED_CNT
+                ,   ATALK_FAILED_CNT
+                ,   FTALK_TOTAL_CNT
+                ,   FTALK_SUCCED_CNT
+                ,   FTALK_FAILED_CNT
+                ,   LMS_TOTAL_CNT
+                ,   LMS_SUCCED_CNT
+                ,   LMS_FAILED_CNT
+                ,   SMS_TOTAL_CNT
+                ,   SMS_SUCCED_CNT
+                ,   SMS_FAILED_CNT
+            FROM    OV_REPORT_MSG_D
+            WHERE   REPORT_DATE = REPLACE('${preDate}', '-', '')
+        )
+        SELECT  A.REPORT_DATE                               AS REPORT_DATE
+            ,   SUBSTR(A.REPORT_DATE, 1, 4)                 AS LONG_TYPE_DATA
+            ,   SUBSTR(A.REPORT_DATE, 1, 4)                 AS SHORT_TYPE_DATA
+            ,   B.ACCT_ROWID                                AS ACCT_ROWID
+            ,   B.CAMP_ROWID                                AS CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID                       AS ATLK_TEMPLATE_ROWID
+            ,   NVL(SUM(B.TOTAL_CNT), 0)                    AS TOTAL_CNT
+            ,   NVL(SUM(B.SUCCED_CNT), 0)                   AS SUCCED_CNT
+            ,   NVL(SUM(B.FAILED_CNT), 0)                   AS FAILED_CNT
+            ,   NVL(SUM(B.ATALK_TOTAL_CNT), 0)              AS ATALK_TOTAL_CNT
+            ,   NVL(SUM(B.ATALK_SUCCED_CNT), 0)             AS ATALK_SUCCED_CNT
+            ,   NVL(SUM(B.ATALK_FAILED_CNT), 0)             AS ATALK_FAILED_CNT
+            ,   NVL(SUM(B.FTALK_TOTAL_CNT), 0)              AS FTALK_TOTAL_CNT
+            ,   NVL(SUM(B.FTALK_SUCCED_CNT), 0)             AS FTALK_SUCCED_CNT
+            ,   NVL(SUM(B.FTALK_FAILED_CNT), 0)             AS FTALK_FAILED_CNT
+            ,   NVL(SUM(B.LMS_TOTAL_CNT), 0)                AS LMS_TOTAL_CNT
+            ,   NVL(SUM(B.LMS_SUCCED_CNT), 0)               AS LMS_SUCCED_CNT
+            ,   NVL(SUM(B.LMS_FAILED_CNT), 0)               AS LMS_FAILED_CNT
+            ,   NVL(SUM(B.SMS_TOTAL_CNT), 0)                AS SMS_TOTAL_CNT
+            ,   NVL(SUM(B.SMS_SUCCED_CNT), 0)               AS SMS_SUCCED_CNT
+            ,   NVL(SUM(B.SMS_FAILED_CNT), 0)               AS SMS_FAILED_CNT   
+        FROM    W_DATE      A
+        LEFT OUTER JOIN
+                W_LAST_DATA B
+        ON      A.REPORT_DATE = B.REPORT_DATE
+        AND     B.REPORT_DATE = REPLACE('${preDate}', '-', '')
+        GROUP BY
+                A.REPORT_DATE
+            ,   SUBSTR(A.REPORT_DATE, 1, 4)
+            ,   SUBSTR(A.REPORT_DATE, 1, 4)
+            ,   B.ACCT_ROWID
+            ,   B.CAMP_ROWID
+            ,   B.ATLK_TEMPLATE_ROWID
+    </insert>
+    
+</mapper>

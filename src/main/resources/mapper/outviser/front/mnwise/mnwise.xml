@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.mnwise.mapper.MnwiseMapper">
+    
+    <!-- -->
+    <insert id="insertEmail" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.insertEmail*/
+        INSERT INTO NVREALTIMEACCEPT (
+                TR_TYPE_CD
+            ,   ECARE_NO
+            ,   CHANNEL
+            ,   TMPL_TYPE
+            ,   RECEIVER_NM
+            ,   RECEIVER
+            ,   SENDER_NM
+            ,   SENDER
+            ,   SUBJECT
+            ,   SEND_FG
+            ,   SLOT1
+            ,   SLOT2
+            ,   SLOT3
+            ,   SLOT4
+            ,   SLOT5
+            ,   SLOT6
+            ,   JONMUN
+            ,   FILE_PATH1
+            ,   FILE_PATH2
+            ,   FILE_PATH3
+            ,   REQ_DT
+            ,   REQ_TM
+        )
+        SELECT  #{emailTrTypeCd}                        /* 1 : 실시간, 9 : 배치 */
+            ,   #{ecareNo}                              /* 1 : 미첨부, 2 : 첨부 */
+            ,   'M'                                     /* 고정 M : 이메일 */
+            ,   'T'                                     /* 고정 T : 직접 입력, J : 앰앤와이즈 템플릿 사용*/
+            ,   FN_DECRYPT(REQ_NAME)                    /* 수신인 이름 : 암호화 여부 */
+            ,   REQ_EMAIL                               /* 수신인 이메일 주소 */
+            ,   #{emailSenderName}                      /* 발송인 이름 */
+            ,   FN_ENCRYPT(#{emailSenderAddress})       /* 발송인 이메일 주소 */
+            ,   NVL(REQ_SUBJECT, REQ_REP_SUBJECT)
+            ,   'R'                                     /* 고정 R : 발송 대기 */
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   ROWID
+            ,   REQ_UUID
+            ,   NULL
+            ,   NULL
+            ,   FN_DECRYPT(REQ_MESSAGE)                 /* 본분 : 암호화 여부 */
+            ,   NULLIF('${filePath1}', '')                      /* 파일 1 */
+            ,   NULLIF('${filePath2}', '')                      /* 파일 2 */
+            ,   NULLIF('${filePath3}', '')                      /* 파일 3 */
+            ,   DATE_FORMAT(REQ_CREATE_DATE, '%Y%m%d')
+            ,   DATE_FORMAT(REQ_CREATE_DATE, '%H%i%s')
+        FROM    OV_REQUEST_SEND A
+        WHERE   EXE_HST_ROWID = #{exeRunHstRowid}
+        AND     ACCT_ROWID = #{sessionUserRowId}
+        AND     CAMP_ROWID = #{campRowid}
+        AND     TMP_DTL_ROWID = #{tmpDtlRowid}
+        AND     REQ_UUID = #{uuid}
+    </insert>
+    
+    
+</mapper>

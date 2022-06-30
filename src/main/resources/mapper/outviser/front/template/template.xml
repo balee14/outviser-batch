@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.template.mapper.TemplateMapper">
+    
+    <!--  -->
+    <select id="selectExeTemplate" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectExeTemplate*/
+        SELECT  A.ROWID                                     AS TMP_DTL_ROWID
+            ,   A.TMP_DTL_CODE                              AS TMP_DTL_CODE
+            ,   A.TMP_DTL_TYPE                              AS TMP_DTL_TYPE
+            ,   CASE
+                    WHEN A.TMP_DTL_TYPE = 'ATL' THEN
+                        A.TMP_DTL_ATLK_INSPECTION_STATUS
+                    ELSE
+                        'APR'
+                END                                         AS TMP_STATUS
+            ,   A.TMP_DTL_SUBJECT                           AS TMP_DTL_SUBJECT
+            ,   A.TMP_DTL_CONTENT                           AS TMP_DTL_CONTENT
+            ,   A.TMP_DTL_ATTACH_YN
+            ,	A.TMP_DTL_ATLK_EXTRA						AS TMP_DTL_ATLK_EXTRA
+            ,	A.TMP_DTL_ATLK_AD							AS TMP_DTL_ATLK_AD
+            ,   A.TMP_DTL_ATLK_TITLE                        AS TMP_DTL_ATLK_TITLE
+            ,	A.TMP_DTL_ATLK_SUBTITLE                     AS TMP_DTL_ATLK_SUBTITLE
+            ,   NVL((
+                        SELECT  MAX(CALLBACK)
+                        FROM    OV_ACCT_MSGNUM Z
+                        WHERE   Z.ROWID = B.TMP_FAILMSG_CALLBACK
+                        AND     Z.ACCT_ROWID = ${sessionUserRowId}
+                    ),  (
+                        SELECT  MAX(CALLBACK)
+                        FROM    OV_ACCT_MSGNUM Z
+                        WHERE   Z.ACCT_ROWID = ${sessionUserRowId}
+                        AND     Z.MSGNUM_DEFAULT_YN = 'Y'
+                    )
+                )                                           AS TMP_FAILMSG_CALLBACK
+            ,   NVL(B.TMP_FAILMSG_SENDTYPE, 'N')            AS TMP_FAILMSG_SENDTYPE
+            ,   B.TMP_FAILMSG_SUBJECT 
+            ,   B.TMP_FAILMSG_CONTENT
+            ,   (
+                    SELECT  MAX(ATLK_SENDER_KEY)
+                    FROM    OV_ATLK_PROFILE_MST Z
+                    WHERE   Z.ROWID = NVL(#{tmpSenderRowid}, A.TMP_SENDER_ROWID)
+                    AND     Z.ACCT_ROWID = ${sessionUserRowId}
+                )                                           AS ATLK_SENDER_KEY
+            ,   NVL((
+                        SELECT  MAX(CALLBACK)
+                        FROM    OV_ACCT_MSGNUM Z
+                        WHERE   Z.ROWID = NVL(#{tmpSenderRowid}, A.TMP_SENDER_ROWID)
+                        AND     Z.ACCT_ROWID = ${sessionUserRowId}
+                    ),  (
+                        SELECT  MAX(CALLBACK)
+                        FROM    OV_ACCT_MSGNUM Z
+                        WHERE   Z.ACCT_ROWID = ${sessionUserRowId}
+                        AND     Z.MSGNUM_DEFAULT_YN = 'Y'
+                    )
+                )                                           AS TRAN_CALL_BACK
+            ,   NVL((
+                        SELECT  MAX(ADDRESS)
+                        FROM    OV_ACCT_MAILADR Z
+                        WHERE   Z.ROWID = NVL(#{tmpSenderRowid}, A.TMP_SENDER_ROWID)
+                        AND     Z.ACCT_ROWID = ${sessionUserRowId}
+                    ),  (
+                        SELECT  MAX(ADDRESS)
+                        FROM    OV_ACCT_MAILADR Z
+                        WHERE   Z.ACCT_ROWID = ${sessionUserRowId}
+                        AND     Z.MAILADR_DEFAULT_YN = 'Y'
+                    )
+                )                                           AS EMAIL_SENDER_ADDRESS
+            ,   NVL((
+                        SELECT  MAX(NAME)
+                        FROM    OV_ACCT_MAILADR Z
+                        WHERE   Z.ROWID = NVL(#{tmpSenderRowid}, A.TMP_SENDER_ROWID)
+                        AND     Z.ACCT_ROWID = ${sessionUserRowId}
+                    ),  (
+                        SELECT  MAX(NAME)
+                        FROM    OV_ACCT_MAILADR Z
+                        WHERE   Z.ACCT_ROWID = ${sessionUserRowId}
+                        AND     Z.MAILADR_DEFAULT_YN = 'Y'
+                    )
+                )                                           AS EMAIL_SENDER_NAME
+            ,   NVL(NULLIF('${tmpUseTypeCode}', '')
+                    ,   (
+                        SELECT  MAX(TMP_USE_TYPE_CODE)
+                        FROM    OV_REG_TEMPLATE_GRP Z
+                        WHERE   Z.TMP_ROWID = A.TMP_MST_ROWID
+                        AND     Z.CAMP_ROWID = #{campRowid}
+                ))                                          AS TMP_USE_TYPE_CODE
+        FROM    OV_TEMPLATE_DTL     A
+        LEFT OUTER JOIN
+                OV_TEMPLATE_FAILMSG B
+        ON      A.ROWID = B.TMP_DTL_ROWID
+        <choose>
+            <when test='tmpDtlRowid > 0'>
+        WHERE   A.ROWID = NVL2(NULLIF('${tmpDtlRowid}', ''), #{tmpDtlRowid}, 0)
+            </when>
+            <when test='tmpDtlRowid == null'>
+        WHERE   A.TMP_MST_ROWID = ${templateRowid}
+            </when>
+            <otherwise>
+        WHERE   1 = 0
+            </otherwise>
+        </choose>
+    </select>
+    
+    <!-- 템플릿_첨부 불러오기 -->
+    <select id="selectTemplateAttach" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectTemplateAttach*/
+        SELECT
+            ota.ROWID AS tmpAttRowid
+            , ota.TMP_ATT_FILENAME AS tmpAttFilename
+            , ota.TMP_ATT_FILESIZE AS tmpAttFilesize
+            , ota.TMP_ATT_FILEPATH AS tmpAttFilepath
+            , ota.TMP_ATT_SYS_FILENAME AS tmpAttSysFilename
+            , oaf.UPLOAD_CODE AS uploadCode
+        FROM
+            OV_TEMPLATE_ATT ota
+            INNER JOIN OV_ATTACH_FILE oaf ON (ota.TMP_ATT_SYS_FILENAME = oaf.SYS_FILE_NM)
+        WHERE
+            oaf.DEL_AT = 'N'
+            AND ota.TMP_DTL_ROWID = #{value}
+    </select>
+    
+    <!-- 템플릿_링크 불러오기 -->
+    <select id="selectTemplateLink" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectTemplateLink*/
+        SELECT
+            otl.ROWID                                                           AS tmpLinkRowid
+            , otl.TMP_LINK_NAME                                                 AS tmpLinkName
+            , otl.TMP_LINK_TYPE                                                 AS tmpLinkType
+            , IF(um.MOVE_URL IS NOT NULL, um.MOVE_URL, otl.TMP_LINK_MOBILE)     AS tmpLinkMobile
+            , IF(upc.MOVE_URL IS NOT NULL, upc.MOVE_URL, otl.TMP_LINK_PC)       AS tmpLinkPc
+            , otl.TMP_LINK_ORDERING                                             AS tmpLinkOrdering
+            , otl.URL_MST_ROWID_MOBILE                                          AS urlMstRowidMobile
+            , otl.URL_MST_ROWID_PC                                              AS urlMstRowidPc    
+        FROM OV_TEMPLATE_LINK otl
+            LEFT JOIN OV_SHORTEN_URL_MST um ON (otl.URL_MST_ROWID_MOBILE = um.ROWID)
+            LEFT JOIN OV_SHORTEN_URL_MST upc ON (otl.URL_MST_ROWID_PC = upc.ROWID)
+        WHERE otl.TMP_DTL_ROWID = #{value}
+    </select>
+    
+    <!--  -->
+    <select id="selectExeTempVarList" resultType="dataMap">
+        /*enliple.ibot.outviser.api.send.selectExeTempVarList*/
+        SELECT  B.VAR_KEY
+            ,   B.VAR_NAME
+            ,   B.VAR_FIXED_VAL
+        FROM    OV_TEMPLATE_DTL A
+            ,   OV_TEMPLATE_VAR B
+        WHERE   A.ROWID = B.TMP_DTL_ROWID
+        /* AND     A.TMP_MST_ROWID = ${templateRowid} */
+        AND     A.ROWID = #{tmpDtlRowid}
+    </select>
+    
+    <!-- -->
+    <select id="selectExeTempGrpVarList" resultType="dataMap">
+        /*enliple.ibot.outviser.api.send.selectExeTempGrpVarList*/
+        SELECT  TMP_GRP_VAR_NAME                    AS TMP_GRP_VAR_NAME
+            ,   TMP_GRP_VAR_DTL_TITLE               AS TMP_GRP_VAR_DTL_TITLE
+            ,   CASE WHEN #{crmYn} = 'Y' THEN
+                    TMP_GRP_VAR_DTL_CRM_NAME
+                ELSE
+                    TMP_GRP_VAR_DTL_EXCEL_NAME
+                END                                 AS TMP_GRP_VAR_DTL_NAME
+        FROM    OV_TEMPLATE_GRP_VAR
+        WHERE   TMP_GRP_VAR_CODE = CASE WHEN #{tmpUseTypeCode} = 'DCB' THEN 'DC' ELSE #{tmpUseTypeCode} END
+        AND     NVL(NULLIF(TMP_GRP_VAR_DEL_YN, ''), 'N') = 'N'
+        ORDER BY TMP_GRP_VAR_SEQ
+    </select>
+    
+    <!--  -->
+    <select id="selectTmpListBySenderRowid" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.atalk.selectTmpListBySenderRowid*/
+
+        SELECT
+            A.ROWID AS tmpRowid
+            , A.TMP_NAME AS tmpName
+            , B.TMP_DTL_CODE AS tmpDtlCode
+            , B.ROWID AS tmpDtlRowid
+            , B.TMP_DTL_ATLK_EXTRA AS tmpDtlAtlkExtra
+            , B.TMP_DTL_ATLK_AD AS tmpDtlAtlkAd
+            , B.TMP_DTL_ATLK_TITLE AS tmpDtlAtlkTitle
+            , B.TMP_DTL_ATLK_SUBTITLE AS tmpDtlAtlkSubtitle
+        FROM OV_TEMPLATE_MST AS A
+        INNER JOIN OV_TEMPLATE_DTL AS B ON A.ROWID = B.TMP_MST_ROWID
+        WHERE
+            A.ACCT_ROWID = #{acctRowid}
+        AND A.TMP_ALL_DEL_YN = 'N'
+        AND A.TMP_RECOMMEND = 'N'
+        AND B.TMP_DTL_TYPE = 'ATL'
+        AND TMP_DTL_ATLK_INSPECTION_STATUS = 'REQ'
+        AND B.TMP_SENDER_ROWID = #{tmpSenderRowid}
+    </select>
+    
+    <select id="selectTemplate" resultType="dataMap">
+		/*enliple.ibot.outviser.front.template.selectTemplate*/
+		SELECT
+			MST.ROWID AS tmpRowid
+			, MST.ACCT_ROWID AS acctRowid
+			, MST.REG_CAMP_ROWID AS regCampRowid
+			, MST.ADDR_GRP_ROWID AS addrGrpRowid
+			, MST.TMP_NAME AS tmpName
+			, MST.TMP_CATEGORY AS tmpCategory
+			, MST.TMP_HASHTAG AS tmpHashtag
+			, MST.TMP_RECOMMEND AS tmpRecommend
+			, DTL.ROWID AS tmpDtlRowid
+			, DTL.TMP_SENDER_ROWID AS tmpSenderRowid
+			, DTL.TMP_DTL_SUBJECT AS tmpDtlSubject
+			, DTL.TMP_DTL_CONTENT AS tmpDtlContent
+			, DTL.TMP_DTL_ATTACH_YN AS tmpDtlAttachYn
+			, DTL.TMP_DTL_TYPE AS tmpDtlType
+			, DTL.TMP_DTL_ATLK_STATUS AS tmpDtlAtlkStatus
+			, DTL.TMP_DTL_ATLK_INSPECTION_STATUS AS tmpDtlAtlkInspectionStatus
+			, DTL.TMP_DTL_ATLK_EXTRA AS tmpDtlAtlkExtra
+			, DTL.TMP_DTL_ATLK_AD AS tmpDtlAtlkAd
+            , DTL.TMP_DTL_ATLK_TITLE AS tmpDtlAtlkTitle
+            , DTL.TMP_DTL_ATLK_SUBTITLE AS tmpDtlAtlkSubtitle
+			, DTL.TMP_DTL_MSG_ADVER_YN AS tmpDtlMsgAdverYn
+			, DTL.MSG_HEADER AS msgHeader
+			, DTL.MSG_BODY AS msgBody
+			, DTL.MSG_FOOTER AS msgFooter
+		FROM
+			OV_TEMPLATE_MST MST
+		INNER JOIN
+			OV_TEMPLATE_DTL DTL
+		ON	MST.ROWID = DTL.TMP_MST_ROWID
+		WHERE
+		<choose>
+			<when test="tmpDtlRowid != null and tmpDtlRowid > 0">
+				DTL.ROWID = #{tmpDtlRowid}
+			</when>
+			<otherwise>
+				MST.ROWID = #{tmpRowid}
+				<if test="tmpDtlType != null and tmpDtlType.length() > 0">
+					AND DTL.TMP_DTL_TYPE = #{tmpDtlType}
+				</if>
+			</otherwise>
+		</choose>
+	</select>
+	
+    <!--  -->
+    <update id="updateTemplateInspect" parameterType="dataMap">
+        UPDATE OV_TEMPLATE_DTL
+        SET
+            TMP_DTL_ATLK_INSPECTION_STATUS = #{tmpDtlAtlkInspectionStatus}
+        WHERE
+            ROWID = #{tmpDtlRowid}
+    </update>
+    
+    
+    
+</mapper>

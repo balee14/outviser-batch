@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.shortenUrl.dtl.mapper.ShortenUrlDtlMapper"> 
+    
+    <!-- -->
+    <insert id="insertShortenUrlDtlList" parameterType="String">
+        /*enliple.ibot.outviser.front.urlshortener2.insertShortenUrlDtlList*/
+        INSERT IGNORE INTO OV_SHORTEN_URL_DTL (CODE)
+        VALUES <foreach collection="array" item="code" separator=",">(#{code})</foreach>
+    </insert>
+    
+    <!-- -->
+    <select id="selectShortenUrlDtlCount" resultType="int">
+        /*enliple.ibot.outviser.front.urlshortener2.selectShortenUrlDtlCount*/
+        SELECT COUNT(CODE)
+        FROM OV_SHORTEN_URL_DTL
+        WHERE CODE LIKE CONCAT(#{headCode}, '%')
+    </select>
+    
+     <!-- -->
+    <insert id="insertBulkShortenUrlDtlList" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.urlshortener2.insertBulkShortenUrlDtlList*/
+        INSERT IGNORE INTO OV_SHORTEN_URL_DTL (CODE, URL_MST_ROWID, URL_GRP_KEY, REG_DT) VALUES
+        <foreach collection="list" item="row" separator=",">(#{row.code}, #{row.urlMstRowid}, #{row.urlGrpKey}, NOW())</foreach>
+    </insert>
+    
+    <!-- -->
+    <insert id="insertShortenUrlDtl" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.urlshortener2.insertShortenUrlDtl*/
+        INSERT IGNORE INTO OV_SHORTEN_URL_DTL (CODE, URL_MST_ROWID, URL_GRP_KEY, REG_DT) VALUES (#{code}, #{urlMstRowid}, #{urlGrpKey}, NOW())
+    </insert>
+    
+    <!-- -->
+    <select id="selectShortenUrl" resultType="dataMap">
+        /*enliple.ibot.outviser.front.urlshortener2.selectShortenUrl*/
+        SELECT
+              osum.MOVE_URL                                                 AS moveUrl
+            , NVL(ors.CAMP_ROWID, '')                                       AS vcn
+            , NVL(ors.ROWID, '')                                            AS rsn
+            , NVL(ors.REQ_ADVER_ID, '')                                     AS aid
+            , NVL(ors.REQ_SITE_USER_ID, '')                                 AS uid
+            , NVL(orvm.REG_CRM_NO, '')                                      AS cn
+            , NVL(ors.TMP_DTL_TYPE, '')                                     AS tmpDtlType
+            , NVL(osum.TMP_DTL_ROWID, '')                                   AS tno
+            , NVL(DATE_FORMAT(oerh.EXE_TRAN_DATE, '%Y-%m-%d %H:%i:%s'), '') AS sdt
+        FROM OV_SHORTEN_URL_DTL osud
+            INNER JOIN OV_SHORTEN_URL_MST osum  ON (osud.URL_MST_ROWID = osum.ROWID)
+            LEFT JOIN OV_REQUEST_SEND ors       ON (osud.URL_GRP_KEY IS NOT NULL AND osud.URL_GRP_KEY = ors.URL_GRP_KEY AND osum.TMP_DTL_ROWID = ors.TMP_DTL_ROWID)
+            LEFT JOIN OV_REG_CAMPAIGN_MST orvm  ON (ors.CAMP_ROWID = orvm.ROWID)
+            LEFT JOIN OV_EXE_RUN_HST oerh       ON (ors.EXE_HST_ROWID = oerh.ROWID)
+        WHERE osud.CODE = #{code}
+    </select>
+    
+    <!-- -->
+    <update id="updateShortenUrlForInflowCnt" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.urlshortener2.updateShortenUrlForInflowCnt*/
+        UPDATE OV_SHORTEN_URL_DTL SET
+            INFLOW_CNT = INFLOW_CNT + 1
+            , MOVE_FULL_URL = #{moveFullUrl} 
+        WHERE CODE = #{code}
+    </update>
+    
+    
+    
+</mapper>

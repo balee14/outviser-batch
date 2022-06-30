@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.reg.template.mapper.RegTemplateMapper">
+    
+    <!--  -->
+    <select id="selectTmpGrpByTmpRowid" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectTmpGrpByTmpStatus*/
+        SELECT  TGRP.CAMP_ROWID
+                ,TGRP.TMP_ROWID
+                ,TGRP.TMP_DTL_TYPE
+                ,TDTL.TMP_DTL_ATLK_INSPECTION_STATUS
+                ,COUNT(*) AS ALL_CNT
+                ,COUNT(CASE WHEN TDTL.TMP_DTL_ATLK_INSPECTION_STATUS = 'APR' THEN 1 END) AS APR_CNT
+        FROM    OV_REG_TEMPLATE_GRP TGRP
+        JOIN    OV_TEMPLATE_DTL TDTL
+        ON      TGRP.TMP_ROWID = TDTL.TMP_MST_ROWID
+        WHERE   CAMP_ROWID IN (
+                                SELECT  CAMP_ROWID
+                                FROM    OV_REG_TEMPLATE_GRP
+                                WHERE   TMP_ROWID = #{TEMPLATE_ROWID}
+                                GROUP BY CAMP_ROWID
+                            )
+        AND     TGRP.TMP_DTL_TYPE = 'ATL'
+        GROUP BY TGRP.CAMP_ROWID
+        HAVING ALL_CNT = APR_CNT
+    </select>
+    
+    <!--  -->
+    <select id="selectTmpGrpByTmpUseTypeCode" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectTmpGrpByTmpUseTypeCode*/
+        SELECT 	ROWID
+                ,CAMP_ROWID
+                ,TMP_ROWID
+                ,TMP_USE_TYPE_CODE
+                ,TMP_SENDER_ROWID
+                ,TMP_DTL_TYPE
+                ,CREATE_DATE
+                ,UPDATE_DATE
+                ,SEND_DAY
+                ,SEND_TIME
+                ,DATE_FORMAT(DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY), INTERVAL SEND_TIME HOUR),'%Y-%m-%d %H:%i:%s') AS TRAN_DATE
+        FROM 	OV_REG_TEMPLATE_GRP
+        WHERE	CAMP_ROWID = #{ROWID}
+        AND     TMP_USE_TYPE_CODE = #{TMP_USE_TYPE_CODE}
+    </select>
+    
+</mapper>

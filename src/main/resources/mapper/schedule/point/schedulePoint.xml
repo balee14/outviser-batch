@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.point.mapper.SchedulePointMapper">
+    
+    <!--  -->
+	<select id="selectAcctRowidListForExpiry" resultType="int">
+		SELECT DISTINCT ACCT_ROWID	
+		FROM OV_CHARGE
+		WHERE CH_CHARGE_TYPE = 'CT_EVENT'
+			AND CH_CURRENT_POINT > 0
+			AND DATE_FORMAT(CURRENT_DATE, '%Y%m%d') NOT BETWEEN CH_START_DATE AND CH_END_DATE
+	</select>
+	
+    <!--  -->
+	<select id="selectChargeListForExpiry" parameterType="int" resultType="dataMap">
+		SELECT
+			  c.ACCT_ROWID							AS ACCT_ROWID
+			, c.ROWID 								AS CHARGE_ROWID
+			, c.CH_CURRENT_POINT * -1 				AS USED_POINT
+			, a.ACCT_CURRENT_AMOUNT 				AS USED_BEFORE_AMOUNT
+			, a.ACCT_CURRENT_POINT 					AS USED_BEFORE_POINT
+			, a.ACCT_LOGIN_ID 
+			, a.CORP_NM
+			, c.CH_START_DATE	
+			, c.CH_END_DATE	
+		FROM OV_CHARGE c
+			LEFT JOIN OV_ACCT_MST a ON (c.ACCT_ROWID = a.ROWID)
+		WHERE c.CH_CHARGE_TYPE = 'CT_EVENT'
+			AND c.CH_CURRENT_POINT > 0
+			AND DATE_FORMAT(CURRENT_DATE, '%Y%m%d') NOT BETWEEN c.CH_START_DATE AND c.CH_END_DATE
+			AND c.ACCT_ROWID = #{value}
+	</select>
+	
+    <!--  -->
+	<insert id="insertUsedChargeForExpiry" parameterType="dataMap">
+		INSERT INTO OV_USED_CHARGE (
+			  ACCT_ROWID
+			, CHARGE_ROWID
+			, USED_SEND_TYPE
+			, USED_AMOUNT
+			, USED_POINT
+			, USED_BEFORE_AMOUNT
+			, USED_BEFORE_POINT
+			, USED_CREATE_DATE
+		) VALUES (
+			  #{ACCT_ROWID}
+			, #{CHARGE_ROWID}
+			, 'EXPIRY'
+			, 0
+			, #{USED_POINT}
+			, #{USED_BEFORE_AMOUNT}
+			, #{USED_BEFORE_POINT}
+			, NOW()
+		)
+	</insert>
+	
+    <!--  -->
+	<update id="updateChargeForExpiry" parameterType="dataMap">
+		UPDATE OV_CHARGE SET
+			CH_CURRENT_POINT = 0
+		WHERE ROWID = #{CHARGE_ROWID}
+	</update>
+	
+    <!--  -->
+	<update id="updateAcctMstForExpiry" parameterType="dataMap">
+		UPDATE OV_ACCT_MST SET
+			ACCT_CURRENT_POINT = ACCT_CURRENT_POINT #{USED_POINT}
+		WHERE ROWID = #{ACCT_ROWID}
+	</update>
+
+</mapper>

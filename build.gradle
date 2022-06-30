@@ -1,0 +1,98 @@
+plugins {
+	id 'org.springframework.boot' version '2.5.2'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+	id 'war'
+}
+
+group = 'com.outviserbatch'
+version = '1.0.0-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+bootWar{
+    archiveBaseName="outviser-batch"
+    archiveVersion="1.0.0-SNAPSHOT"
+}
+
+/*
+bootJar{
+    //enabled = true
+    baseName = "-"
+    archiveFileName="-.jar"
+    version = "0.0.1-SNAPSHOT"
+}
+*/
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+    // devtools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    // boot web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // boot aop
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    // boot test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // tomcat
+    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+    // https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-jdbc
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-jdbc', version: '2.5.2'
+    // quartz
+    implementation 'org.springframework.boot:spring-boot-starter-quartz'
+    // batch
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    // batch test
+    testImplementation 'org.springframework.batch:spring-batch-test'
+    // https://mvnrepository.com/artifact/org.mariadb.jdbc/mariadb-java-client
+    implementation group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '2.7.3'
+    // mybatis
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.2.0'
+    // lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    // https://mvnrepository.com/artifact/servlets.com/cos
+    implementation group: 'servlets.com', name: 'cos', version: '05Nov2002'
+    // https://mvnrepository.com/artifact/com.google.guava/guava
+    implementation group: 'com.google.guava', name: 'guava', version: '30.0-jre'
+    // https://mvnrepository.com/artifact/org.json/org.json
+    implementation group: 'org.json', name: 'org.json', version: 'chargebee-1.0'
+    // https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple
+    implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
+    // https://mvnrepository.com/artifact/org.apache.poi/poi
+    implementation group: 'org.apache.poi', name: 'poi', version: '4.1.2'
+    // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+    implementation group: 'org.apache.poi', name: 'poi-ooxml', version: '4.1.2'
+    // https://mvnrepository.com/artifact/javax.mail/mail
+    implementation group: 'javax.mail', name: 'mail', version: '1.4.7'
+    // https://mvnrepository.com/artifact/org.bgee.log4jdbc-log4j2/log4jdbc-log4j2-jdbc4.1
+    implementation group: 'org.bgee.log4jdbc-log4j2', name: 'log4jdbc-log4j2-jdbc4.1', version: '1.16'
+    // org.apache
+    implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
+    
+    // https://mvnrepository.com/artifact/commons-configuration/commons-configuration
+    implementation group: 'commons-configuration', name: 'commons-configuration', version: '1.10'
+    // https://mvnrepository.com/artifact/commons-collections/commons-collections
+    implementation group: 'commons-collections', name: 'commons-collections', version: '3.2.2'
+    // https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils
+    implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
+    // https://mvnrepository.com/artifact/commons-digester/commons-digester
+    implementation group: 'commons-digester', name: 'commons-digester', version: '2.1'
+    // https://mvnrepository.com/artifact/commons-fileupload/commons-fileupload
+    implementation group: 'commons-fileupload', name: 'commons-fileupload', version: '1.4'
+    // org.apache.commons
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    // https://mvnrepository.com/artifact/org.apache.commons/org.apache.commons.lang
+    //implementation group: 'org.apache.commons', name: 'org.apache.commons.lang', version: '2.4.0'
+    // https://mvnrepository.com/artifact/io.netty/netty-all
+    //implementation group: 'io.netty', name: 'netty-all', version: '4.1.65.Final'
+    
+    // https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt
+    implementation group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
+}
+
+test {
+	useJUnitPlatform()
+}

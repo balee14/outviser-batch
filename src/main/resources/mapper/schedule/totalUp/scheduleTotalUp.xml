@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.totalUp.mapper.ScheduleTotalUpMapper">
+
+    <insert id="testInsert" parameterType="String">
+        insert into A_TEST_INSERT (TEXT) values ( #{param} )
+    </insert>
+
+
+    <select id="selectTotalUpTargetList" resultType="dataMap">
+        /*com.enliple.outviserbatch.schedule.totalUp.mapper.ScheduleTotalUpMapper.selectTotalUpTargetList*/
+        SELECT
+            EXE_ROWID as exeRowid
+        FROM
+            OV_EXE_RUN_HST
+        WHERE
+            EXE_SUCCESS_COUNT != SEND_SUCCESS_COUNT + SEND_FAIL_COUNT
+            AND DATE_FORMAT( EXE_TRAN_DATE, '%Y%m%d' ) <![CDATA[<=]]> DATE_FORMAT( DATE_ADD( NOW(), INTERVAL - 1 DAY ), '%Y%m%d' )
+        GROUP BY EXE_ROWID
+        ORDER BY EXE_TRAN_DATE DESC
+        <if test='limitCnt != null and limitCnt > 0'>
+            LIMIT #{limitCnt}
+        </if>
+    </select>
+
+    <!-- 정산 대상 집행 정보 조회 -->
+    <select id="selectExeRunHstList" resultType="dataMap">
+        /*com.enliple.outviserbatch.schedule.totalUp.mapper.ScheduleTotalUpMapper.selectExeRunHstList*/
+        SELECT
+            er.ROWID,
+            er.REQ_UUID,
+            CONCAT( '' , er.ACCT_ROWID ) as ACCT_ROWID,
+            td.TMP_DTL_TYPE,
+            NVL(tf.TMP_FAILMSG_SENDTYPE, 'N') AS TMP_FAILMSG_SENDTYPE
+        FROM
+            OV_EXE_RUN_HST er
+                INNER JOIN OV_TEMPLATE_DTL td ON (er.TMP_DTL_ROWID = td.ROWID)
+                LEFT JOIN OV_TEMPLATE_FAILMSG tf ON (er.TMP_DTL_ROWID = tf.TMP_DTL_ROWID)
+        WHERE
+            er.EXE_RUN_STATUS = 'DONE'
+          AND er.EXE_SUCCESS_COUNT > 0
+          AND (
+                IF(er.EXE_SUCCESS_COUNT = er.SEND_SUCCESS_COUNT + er.SEND_FAIL_COUNT, false, true)
+                OR IF(er.REPLACE_UNIT_AMOUNT = 0 OR er.SEND_FAIL_COUNT = er.REPLACE_SUCCESS_COUNT + er.REPLACE_FAIL_COUNT, false, true)
+            )
+          AND er.EXE_ROWID = #{exeRowid}
+    </select>
+
+    <!-- update 할 성공 실패 카운트 가져오기 -->
+    <select id="selectUpdateData" parameterType="dataMap" resultType="dataMap">
+        select
+            (
+            <choose>
+                <when test='TMP_DTL_TYPE == "ATL"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_ATALK_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_ATALK_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                </when>
+                <when test='TMP_DTL_TYPE == "FTL"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_FTALK_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_FTALK_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                </when>
+                <when test='TMP_DTL_TYPE == "SMS"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '00' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '00' )
+                </when>
+                <when test='TMP_DTL_TYPE == "LMS" or TMP_DTL_TYPE == "MMS"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                </when>
+                <when test='TMP_DTL_TYPE == "EML"'>
+                    SELECT COUNT(SEQ) FROM NVREALTIMELOG WHERE SLOT1 = #{ACCT_ROWID} AND RSLT_CD = '250' AND SLOT4 = #{REQ_UUID}
+                </when>
+            </choose>
+            ) as sendSuccessCnt,
+            (
+            <choose>
+                <when test='TMP_DTL_TYPE == "ATL"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_ATALK_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_ATALK_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <when test='TMP_DTL_TYPE == "FTL"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_FTALK_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_FTALK_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <when test='TMP_DTL_TYPE == "SMS"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '00' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '00' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <when test='TMP_DTL_TYPE == "LMS" or TMP_DTL_TYPE == "MMS"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <when test='TMP_DTL_TYPE == "EML"'>
+                    SELECT COUNT(SEQ) FROM NVREALTIMELOG WHERE SLOT1 = #{ACCT_ROWID} AND RSLT_CD != '250' AND NVL(SLOT4, '') = #{REQ_UUID}
+                </when>
+            </choose>
+            ) as sendFailCnt,
+            (
+            <choose>
+                <when test='TMP_FAILMSG_SENDTYPE == "S"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '00' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '00' )
+                </when>
+                <when test='TMP_FAILMSG_SENDTYPE == "L" or TMP_FAILMSG_SENDTYPE == "M"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND TRAN_RSLT = '1000' )
+                </when>
+                <otherwise>0</otherwise>
+            </choose>
+            ) AS replaceSuccessCnt,
+            (
+            <choose>
+                <when test='TMP_FAILMSG_SENDTYPE == "S"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '00' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_SMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '00' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <when test='TMP_FAILMSG_SENDTYPE == "L" or TMP_FAILMSG_SENDTYPE == "M"'>
+                    ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG         WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                    + ( SELECT COUNT(TRAN_PR) FROM MTS_MMS_MSG_LOG_BATCH_1 WHERE TRAN_ETC1 = #{ACCT_ROWID} AND TRAN_ETC4 = #{REQ_UUID} AND ( TRAN_RSLT != '1000' OR TRAN_RSLT IS NULL ) )
+                </when>
+                <otherwise>0</otherwise>
+            </choose>
+            ) as replaceFailCnt,
+            #{ROWID} as ROWID
+        FROM
+            DUAL;
+    </select>
+
+    <!-- 집계 업데이트 -->
+    <update id="updateExeRunHstForAddSendCnt" parameterType="dataMap">
+        /*com.enliple.outviserbatch.schedule.totalUp.mapper.ScheduleTotalUpMapper.updateExeRunHstForAddSendCnt*/
+        UPDATE
+            OV_EXE_RUN_HST
+        SET
+            SEND_SUCCESS_COUNT = #{sendSuccessCnt},
+            SEND_FAIL_COUNT = #{sendFailCnt},
+            REPLACE_SUCCESS_COUNT = #{replaceSuccessCnt},
+            REPLACE_FAIL_COUNT = #{replaceFailCnt}
+        WHERE
+              ROWID = #{ROWID}
+    </update>
+
+
+</mapper>

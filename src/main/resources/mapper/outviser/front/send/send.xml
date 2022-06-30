@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.api.send.mapper.SendMapper">
+    
+    <!--  -->
+	<select id="selectSweetTrackerMstByRowId" resultType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.selectSweetTrackerMstByRowId*/
+		SELECT	ROWID
+				,INVOICE_NO
+				,ORDER_NO
+				,ADVER_ID
+				,COURIER_CODE
+				,LEVEL
+				,TRAN_PHONE
+				,ACCT_ROWID
+				,CRM_NO
+				,CAMP_ROWID
+				,CREATE_DATE
+				,DATE_FORMAT(CREATE_DATE, '%Y-%m-%d') AS CREATE_DATE_TEXT
+		FROM	OV_LINK_DELIVERY_MST
+		WHERE	ROWID = #{fid}
+	</select>
+    
+    <!--  -->
+	<select id="selectSweetTrackerCharge" resultType="dataMap">
+		/*enliple.ibot.outviser.api.send.selectSweetTrackerCharge*/
+		SELECT  B.ROWID             AS TMP_DTL_ROWID
+			,   C.CODE              AS TMP_USE_TYPE_CODE
+		FROM    OV_REG_TEMPLATE_GRP A
+			,   OV_TEMPLATE_DTL     B
+			,   OV_CODE_DTL         C
+		WHERE   A.CAMP_ROWID = ${campRowid}
+		AND     A.TMP_ROWID = B.TMP_MST_ROWID
+		AND     A.TMP_USE_TYPE_CODE = C.CODE
+		AND     C.MST_ROWID = 22 /* 캠페인 유형 타입 */
+		AND     NVL(NULLIF(C.DEL_YN, ''), 'N') = 'N'
+		ORDER BY C.ORDER_SEQ
+		LIMIT 1
+	</select>
+
+    <!--  -->
+	<select id="selectSweetTrackerMstByInvoiceNo" resultType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.selectSweetTrackerMstByInvoiceNo*/
+		SELECT	ROWID
+				,INVOICE_NO
+				,ORDER_NO
+				,ADVER_ID
+				,COURIER_CODE
+				,LEVEL
+				,TRAN_PHONE
+				,ACCT_ROWID
+				,CRM_NO
+				,CAMP_ROWID
+				,CREATE_DATE
+				,DATE_FORMAT(CREATE_DATE, '%Y-%m-%d') AS CREATE_DATE_TEXT
+		FROM	OV_LINK_DELIVERY_MST
+		WHERE	INVOICE_NO = #{INVOICE_NO}
+		AND 	COURIER_CODE = #{COURIER_CODE}
+	</select>
+
+    <!--  -->
+	<select id="selectCampaignMstByCrmNo" parameterType="dataMap" resultType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.selectCampaignMstByCrmNo*/
+		SELECT  MST.ROWID
+				,MST.ACCT_ROWID
+				,MST.REG_NAME
+				,MST.REG_MEMO
+				,MST.REG_STATUS
+				,MST.REG_CRM_NO
+				,MST.REG_CAMP_TYPE
+				,MST.ADDR_GRP_ROWID
+				,MST.REG_SEND_TIME_TYPE
+				,MST.REG_SEND_START_DATE
+				,MST.REG_SEND_START_TIME
+				,MST.REG_FIXED_TIME_TYPE
+				,MST.REG_FIXED_TIME_DETAIL_TYPE
+				,MST.REG_FIXED_TIME_INTERVAL
+				,MST.REG_FIXED_TIME_WEEK
+				,MST.REG_END_DATE
+				,MST.REG_CREATE_DATE
+				,MST.REG_UPDATE_DATE
+				,MST.REG_DEL_YN
+				,MST.REG_OVERLAP_SEND_YN
+				,MST.REG_OVERLAP_SEND_TERM_YN
+				,MST.REG_OVERLAP_SEND_TERM
+				,TGRP.TMP_ROWID AS TEMPLATE_ROWID
+		FROM    OV_REG_CAMPAIGN_MST MST
+		JOIN    (
+					SELECT 	ROWID
+							,CAMP_ROWID
+							,TMP_ROWID
+							,TMP_USE_TYPE_CODE
+							,TMP_SENDER_ROWID
+							,TMP_DTL_TYPE
+					FROM 	OV_REG_TEMPLATE_GRP
+					WHERE	ROWID IN (	SELECT 	MIN(ROWID)
+										FROM 	OV_REG_TEMPLATE_GRP
+										GROUP BY CAMP_ROWID )
+				) TGRP
+		ON      MST.ROWID = TGRP.CAMP_ROWID
+		JOIN    OV_EXE_CAMPAIGN OEC
+		ON      MST.ROWID = OEC.CAMP_ROWID
+		WHERE   MST.REG_CRM_NO = #{CRM_NO}
+		AND     MST.ACCT_ROWID = #{ACCT_ROWID}
+		AND     MST.REG_CAMP_TYPE = 1
+		AND     MST.REG_STATUS = 'CAMPAIGN_EXE_COMP'
+		AND     OEC.EXE_STATUS = 'LIVE'
+	</select>
+
+    <!--  -->
+	<select id="selectSweetTrackerVarList" parameterType="dataMap" resultType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.selectSweetTrackerVarList*/
+		SELECT	ROWID
+				,DELIVERY_MST_ROWID
+				,NAME
+				,fn_decrypt(VALUE) AS VALUE
+		FROM	OV_LINK_DELIVERY_VAR
+		WHERE	DELIVERY_MST_ROWID = #{DELIVERY_MST_ROWID}
+	</select>
+
+    <!--  -->
+	<select id="selectSweetTrackerLogByLevelCnt" resultType="int">
+		/*enliple.ibot.outviser.api.sweetTracker.selectSweetTrackerLogByLevelCnt*/
+		SELECT	COUNT(*)
+		FROM	OV_LINK_DELIVERY_LOG
+		WHERE	MST_ROWID = #{fid}
+		AND 	LEVEL = #{level}
+	</select>
+
+    <!--  -->
+	<insert id="insertSweetTracker" parameterType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.insertSweetTracker*/
+		INSERT INTO tb_SWEET_TRACKER(
+			SECRET_VALUE
+			,FID
+			,INVOICE_NO
+			,LEVEL
+			,TIME_TRANS
+			,TIME_SWEET
+			,LOCATION
+			,TELNO_OFFICE
+			,TELNO_MEN
+			,DETAILS
+			,RECV_ADDR
+			,RECV_NAME
+			,SEND_NAME
+			,MAN
+			,ESTMATE
+			,CREATE_DATE
+		) VALUES (
+			#{secretValue}
+			,#{fid}
+			,#{invoiceNo}
+			,#{level}
+			,#{timeTrans}
+			,#{timeSweet}
+			,#{where}
+			,#{telnoOffice}
+			,#{telnoMen}
+			,#{details}
+			,#{recvAddr}
+			,#{recvName}
+			,#{sendName}
+			,#{man}
+			,#{estmate}
+			,NOW()
+		)
+	</insert>
+
+    <!--  -->
+	<insert id="insertSweetTrackerLog" parameterType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.insertSweetTrackerLog*/
+		INSERT INTO OV_LINK_DELIVERY_LOG(
+			MST_ROWID
+			,SECRET_VALUE
+			,LEVEL
+			,TIME_TRANS
+			,TIME_SWEET
+			,LOCATION
+			,TELNO_OFFICE
+			,TELNO_MAN
+			,DETAILS
+			,RECV_ADDR
+			,RECV_NAME
+			,SEND_NAME
+			,MAN
+			,ESTMATE
+			,CREATE_DATE
+			,ERR_YN
+			,ERR_MSG
+		)VALUES(
+			#{fid}
+			,#{secretValue}
+			,#{level}
+			,#{timeTrans}
+			,#{timeSweet}
+			,#{where}
+			,#{telnoOffice}
+			,#{telnoMan}
+			,#{details}
+			,#{recvAddr}
+			,#{recvName}
+			,#{sendName}
+			,#{man}
+			,#{estmate}
+			,NOW()
+			,#{ERR_YN}
+			,#{ERR_MSG}
+		)
+	</insert>
+
+    <!--  -->
+	<insert id="insertSweetTrackerMst" parameterType="dataMap" useGeneratedKeys="true" keyProperty="ROWID" keyColumn="ROWID">
+		/*enliple.ibot.outviser.api.sweetTracker.insertSweetTrackerMst*/
+		INSERT INTO OV_LINK_DELIVERY_MST(
+			INVOICE_NO
+			,ORDER_NO
+			,ADVER_ID
+			,COURIER_CODE
+			,LEVEL
+			,TRAN_PHONE
+			,ACCT_ROWID
+			,CRM_NO
+			,CAMP_ROWID
+		)VALUES(
+			#{INVOICE_NO}
+			,#{ORDER_NO}
+			,#{ADVER_ID}
+			,#{COURIER_CODE}
+			,#{LEVEL}
+			,#{TRAN_PHONE}
+			,#{ACCT_ROWID}
+			,#{CRM_NO}
+			,#{CAMP_ROWID}
+		)
+	</insert>
+
+    <!--  -->
+	<insert id="insertSweetTrackerVarGrp" parameterType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.insertSweetTrackerVarGrp*/
+		INSERT INTO OV_LINK_DELIVERY_VAR(
+			DELIVERY_MST_ROWID
+			,NAME
+			,VALUE
+		)SELECT #{DELIVERY_MST_ROWID}
+				,NVL(NAME, #{NAME})
+				,fn_encrypt(#{VALUE})
+		FROM 	OV_LINK_DELIVERY_VAR
+		WHERE 	DELIVERY_MST_ROWID = 0
+		AND 	VALUE = #{NAME}
+	</insert>
+
+    <!--  -->
+	<update id="updateSweetTrackerMst" parameterType="dataMap">
+		/*enliple.ibot.outviser.api.sweetTracker.updateSweetTrackerMst*/
+		UPDATE 	OV_LINK_DELIVERY_MST
+		SET 	LEVEL = #{level}
+		WHERE	ROWID = #{fid}
+	</update>
+
+</mapper>

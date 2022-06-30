@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.request.mapper.RequestMapper">
+    
+    <!-- -->
+    <insert id="insertRequestSendData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.insertRequestSendData*/
+        INSERT INTO OV_REQUEST_SEND (
+                ACCT_ROWID
+            ,   EXE_HST_ROWID
+            ,   CAMP_ROWID
+            ,   TMP_DTL_ROWID
+            ,   TMP_DTL_TYPE
+            ,   URL_GRP_KEY
+            ,   REQ_ADVER_ID
+            ,   REQ_SITE_USER_ID
+            ,   REQ_TRAN_TYPE
+            ,   REQ_CALLBACK
+            ,   REQ_NAME
+            ,   REQ_PHONE_NO
+            ,   REQ_EMAIL
+            ,   REQ_SUBJECT
+            ,   REQ_MESSAGE
+            ,   REQ_BUTTON
+            ,   REQ_IMG_LINK
+            ,   REQ_REP_CALLBACK
+            ,   REQ_REP_TYPE
+            ,   REQ_REP_SUBJECT
+            ,   REQ_REP_MESSAGE
+            ,   REQ_CREATE_DATE
+            ,   REQ_UUID
+        ) VALUES
+        <foreach collection="list" item="datas" separator=",">
+        (
+                ${datas.sessionUserRowId}
+            ,   ${datas.exeRunHstRowid}
+            ,   ${datas.campRowid}
+            ,   ${datas.tmpDtlRowid}
+            ,   #{datas.tmpDtlType}
+            ,   #{datas.urlGrpKey}
+            ,   #{datas.sessionAdverId}
+            ,   #{datas.reqSiteUserId}
+            ,   ${datas.tranType}
+            ,   '${datas.tranCallBack}'
+            ,   FN_ENCRYPT(#{datas.name})
+            ,   FN_ENCRYPT(TRIM(REPLACE('${datas.sendPhoneNo}', '-', '')))
+            ,   FN_ENCRYPT('${datas.tranEmail}')
+            ,   <choose>
+                    <when test='datas.tmpDtlType.equals("ATL")'>
+                        IF('${datas.tranTitle}'='', '', FN_ENCRYPT('${datas.tranTitle}'))
+                    </when>
+                    <otherwise>
+                        '${datas.sendSubject}'
+                    </otherwise>
+                </choose>
+            ,   FN_ENCRYPT(NVL(#{datas.sendMessage}, ''))
+            ,   REPLACE(REPLACE(#{datas.tranButton}, '[', ''), ']', '')
+            ,	#{datas.imgLink}
+            ,   '${datas.tranRepCallBack}'
+            ,   '${datas.tranReplaceType}'
+            ,   #{datas.tranReplaceSubject}
+            ,   FN_ENCRYPT(NVL(#{datas.tranReplaceMessage}, ''))
+            ,   CASE WHEN '${datas.tranDate}' = '' THEN DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s') ELSE STR_TO_DATE('${datas.tranDate}', '%Y-%m-%d %H:%i:%s') END
+            ,   '${datas.uuid}'
+        )
+        </foreach>
+    </insert>
+    
+    <!-- -->
+    <insert id="insertSendFailData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.insertSendFailData*/
+        INSERT INTO OV_REQUEST_SEND_FAIL (
+                EXE_HST_ROWID
+            ,   ACCT_ROWID
+            ,   CAMP_ROWID
+            ,   TMP_DTL_ROWID
+            ,   TMP_DTL_TYPE
+            ,   REQ_ADVER_ID
+            ,   REQ_SITE_USER_ID
+            ,   REQ_TRAN_TYPE
+            ,   REQ_CALLBACK
+            ,   REQ_NAME
+            ,   REQ_PHONE_NO
+            ,   REQ_EMAIL
+            ,   REQ_FAIL_MSG
+            ,   REQ_CREATE_DATE
+            ,   REQ_UUID
+        ) VALUES
+        <foreach collection="list" item="datas" separator=",">
+        (
+                ${datas.exeRunHstRowid}
+            ,   ${datas.sessionUserRowId}
+            ,   ${datas.campRowid}
+            ,   ${datas.tmpDtlRowid}
+            ,   #{datas.tmpDtlType}
+            ,   #{datas.sessionAdverId}
+            ,   #{datas.reqSiteUserId}
+            ,   ${datas.tranType}
+            ,   '${datas.tranCallBack}'
+            ,   FN_ENCRYPT(#{datas.name})
+            ,   FN_ENCRYPT(REPLACE('${datas.sendPhoneNo}', '-', ''))
+            ,   FN_ENCRYPT('${datas.tranEmail}')
+            ,   '${datas.errorMsg}'
+            ,   CASE WHEN '${datas.tranDate}' = '' THEN DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s') ELSE STR_TO_DATE('${datas.tranDate}', '%Y-%m-%d %H:%i:%s') END
+            ,   '${datas.uuid}'
+        )
+        </foreach>
+    </insert>
+    
+</mapper>

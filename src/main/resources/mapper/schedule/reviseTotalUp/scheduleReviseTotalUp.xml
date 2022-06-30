@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.reviseTotalUp.mapper.ScheduleReviseTotalUpMapper">
+
+    <insert id="testInsert" parameterType="String">
+        /*scheduleReviseTotalUp.testInsert*/
+        insert into A_TEST_INSERT (TEXT) values ( #{param} )
+    </insert>
+
+
+    <select id="selectReviseTotalUpTargetList" resultType="dataMap">
+        /*scheduleReviseTotalUp.selectReviseTotalUpTargetList*/
+        select
+            ROWID as hstRowid,
+            ACCT_ROWID as acctRowid,
+            EXE_ROWID as exeRowid,
+            EXE_SUCCESS_COUNT,
+            SEND_SUCCESS_COUNT,
+            SEND_FAIL_COUNT,
+            REPLACE_SUCCESS_COUNT,
+            REPLACE_FAIL_COUNT,
+            EXE_SUCCESS_COUNT - (SEND_SUCCESS_COUNT + SEND_FAIL_COUNT) as sendCal,
+            IF( REPLACE_UNIT_AMOUNT = 0, 0, SEND_FAIL_COUNT - ( REPLACE_SUCCESS_COUNT + REPLACE_FAIL_COUNT ) ) as replCal,
+            EXE_TRAN_DATE,
+            EXE_RUN_START_DATE,
+            EXE_RUN_END_DATE
+        from
+         OV_EXE_RUN_HST
+        where
+            ROWID > 0
+            AND
+              (
+                  EXE_SUCCESS_COUNT > SEND_SUCCESS_COUNT + SEND_FAIL_COUNT
+                OR ( REPLACE_UNIT_AMOUNT > 0 AND SEND_FAIL_COUNT > REPLACE_SUCCESS_COUNT + REPLACE_FAIL_COUNT )
+              )
+            AND DATE_FORMAT( EXE_TRAN_DATE, '%Y%m%d' ) <![CDATA[<=]]> DATE_FORMAT( DATE_ADD( NOW(), INTERVAL - 4 DAY ), '%Y%m%d' )
+            -- AND ACCT_ROWID IN ( 1, 100001, 100002 ) -- 테스트용
+        ORDER BY EXE_TRAN_DATE desc
+        <if test='limitCnt != null and limitCnt > 0'>
+            LIMIT #{limitCnt}
+        </if>
+    </select>
+
+    <update id="updateReviseTotalUp" parameterType="dataMap">
+        /*scheduleReviseTotalUp.updateReviseTotalUp*/
+        UPDATE
+            OV_EXE_RUN_HST
+        SET
+            SEND_FAIL_COUNT = SEND_FAIL_COUNT + #{sendCal},
+            REPLACE_FAIL_COUNT = REPLACE_FAIL_COUNT + #{sendCal} + #{replCal}
+        WHERE ROWID = #{hstRowid}
+            AND ACCT_ROWID = #{acctRowid}
+            AND EXE_ROWID = #{exeRowid}
+    </update>
+
+</mapper>

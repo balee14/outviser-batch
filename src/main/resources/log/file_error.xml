@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<appender name="fileErrorAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+	<!-- Filter -->
+	<filter class="ch.qos.logback.classic.filter.LevelFilter">
+		<level>error</level>
+		<onMatch>ACCEPT</onMatch>
+		<onMismatch>DENY</onMismatch>
+	</filter>
+
+	<!-- Rolling -->
+	<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+		<fileNamePattern>${LOG_DIR_ERROR}/${LOG_FILENAME_ERROR}.%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+		<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+			<maxFileSize>500MB</maxFileSize>
+		</timeBasedFileNamingAndTriggeringPolicy>
+		<!-- <maxHistory>30</maxHistory> -->
+	</rollingPolicy>
+
+	<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+		<charset>${CHARSET}</charset>
+		<pattern>${PATTERN}</pattern>
+	</encoder>
+</appender>

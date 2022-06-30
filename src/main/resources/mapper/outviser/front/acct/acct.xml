@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.acct.mapper.AcctMapper">
+    
+    <!--  -->
+    <select id="selectAccount" resultType="dataMap">
+	   	/*enliple.ibot.outviser.api.account.selectAccount*/
+	   	SELECT  ROWID
+		FROM    OV_ACCT_MST
+		WHERE   ACCT_DEL_YN = 'N'
+		<choose>
+			<when test='acctLoginId != null and acctLoginId != ""'>
+				AND     ACCT_LOGIN_ID = #{acctLoginId}
+			</when>
+			<when test='apiToken != null and apiToken != ""'>
+				AND     API_TOKEN = #{apiToken}
+			</when>
+		</choose>
+	</select>
+	
+    <!--  -->
+    <select id="selectUserInfo" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.executional.selectUserInfo*/
+        SELECT  ROWID
+            ,   ACCT_LOGIN_ID
+            ,   ADVER_ID
+        FROM    OV_ACCT_MST
+        WHERE   ROWID = #{ACCT_ROWID}
+        AND     NVL(NULLIF(ACCT_DEL_YN, ''), 'N') = 'N'
+    </select>
+    
+    <!-- -->
+    <update id="updateAcctMstForAmountAndPointU" parameterType="dataMap">
+        /*enliple.ibot.outviser.api.payment.updateAcctMstForAmountAndPointU*/
+        UPDATE OV_ACCT_MST
+        <trim prefix="SET" suffixOverrides=",">
+            <if test='changeAmount != null and changeAmount != 0'>
+                ACCT_CURRENT_AMOUNT = ACCT_CURRENT_AMOUNT + ${changeAmount},
+            </if>
+            <if test='changePoint != null and changePoint != 0'>
+                ACCT_CURRENT_POINT  = ACCT_CURRENT_POINT  + ${changePoint},
+            </if>
+        </trim>
+        WHERE ROWID = NVL(#{targetUserRowid}, #{sessionUserRowId})
+    </update>
+     
+     <!--  -->
+     <select id="selectAllSenderInfoList" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.atalk.selectAllSenderInfoList*/
+        SELECT
+            A.ROWID AS acctRowid
+            , A.ACCT_LOGIN_ID AS acctLoginId
+            , A.CORP_NM AS corpNm
+            , B.ROWID AS tmpSenderRowid
+            , B.ATLK_SENDER_KEY AS atlkSenderKey
+            , B.ATLK_NAME AS atlkName
+            , B.ATLK_CHANNEL_ID AS atlkChannelId
+        FROM OV_ACCT_MST AS A
+        INNER JOIN OV_ATLK_PROFILE_MST AS B ON A.ROWID = B.ACCT_ROWID
+        WHERE
+            A.ACCT_DEL_YN = 'N'
+        AND B.ATLK_DEL_YN = 'N'
+    </select>
+     
+     <!--  -->
+     <select id="isExistUser" parameterType="dataMap" resultType="boolean">
+        SELECT IF(COUNT(0) >= 1, 1, 0)
+        FROM OV_ACCT_MST
+        WHERE
+            ROWID = #{sessionUserRowId}
+        AND ACCT_LOGIN_ID = #{sessionUserId}
+     </select>
+     
+</mapper>

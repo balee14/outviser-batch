@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.reg.campaign.mapper.RegCampaignMapper">
+    
+    <!-- 캠페인 상태 확인 -->
+    <select id="selectExeCampaign" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectExeCampaign*/
+        SELECT  MST.ROWID                                                                                   AS CAMP_ROWID
+            ,   MST.REG_STATUS                                                                              AS REG_STATUS
+            ,   MST.REG_CRM_NO                                                                              AS CRM_CAMP_NO
+            ,   TGRP.TMP_ROWID                                                                              AS TEMPLATE_ROWID
+            ,   MST.REG_SEND_TIME_TYPE                                                                      AS REG_SEND_TIME_TYPE
+            ,   CASE
+                    WHEN MST.REG_SEND_TIME_TYPE = 'N' THEN
+                        DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s')
+                    WHEN MST.REG_SEND_TIME_TYPE = 'API' THEN
+                        DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s')
+                    ELSE
+                        #{tranDate}
+                    -- WHEN REG_SEND_TIME_TYPE = 'R' THEN
+                    --    STR_TO_DATE(CONCAT(REG_SEND_START_DATE, REG_SEND_START_TIME), '%Y%m%d%H%i%S')
+                END                                                                                         AS TRAN_DATE
+            ,   MST.REG_OVERLAP_SEND_YN                                                                     AS REG_OVERLAP_SEND_YN
+            ,   MST.REG_OVERLAP_SEND_TERM                                                                   AS REG_OVERLAP_SEND_TERM
+            ,   MST.REG_CAMP_TYPE                                                                           AS REG_CAMP_TYPE
+        FROM    OV_REG_CAMPAIGN_MST MST
+        JOIN    (
+                    SELECT  ROWID
+                            ,CAMP_ROWID
+                            ,TMP_ROWID
+                            ,TMP_USE_TYPE_CODE
+                            ,TMP_SENDER_ROWID
+                            ,TMP_DTL_TYPE
+                    FROM    OV_REG_TEMPLATE_GRP
+                    WHERE   ROWID IN (  SELECT  MIN(ROWID)
+                                        FROM    OV_REG_TEMPLATE_GRP
+                                        GROUP BY CAMP_ROWID )
+                ) TGRP
+        ON      MST.ROWID = TGRP.CAMP_ROWID
+        WHERE   MST.REG_STATUS IN ('CAMPAIGN_EXE_READY', 'CAMPAIGN_EXE_ING', 'CAMPAIGN_EXE_STOP', 'CAMPAIGN_EXE_COMP')
+        AND     MST.ROWID = ${campRowid}
+    </select>
+    
+    <!-- -->
+    <select id="selectRequiredData" resultType="dataMap">
+        /*enliple.ibot.outviser.api.send.selectRequiredData*/
+        SELECT  A.ROWID                             AS CAMP_ROWID
+            ,   A.ACCT_ROWID                        AS ACCT_ROWID
+            ,   C.ROWID                             AS TEMPLATE_ROWID
+            ,   E.ATLK_SENDER_KEY                   AS ATLK_SENDER_KEY
+            ,   A.TEMPLATE_ROWID                    AS ATLK_TEMPLATE_ROWID
+            ,   D.TMP_DTL_CODE                      AS ATLK_TEMPLATE_CODE
+            ,   A.REG_CRM_NO                        AS CRM_CAMP_NO
+            ,   CASE WHEN D.TMP_DTL_TYPE = 'ATL' THEN
+                    D.TMP_DTL_ATLK_INSPECTION_STATUS
+                ELSE
+                    'APR'
+                END                                 AS TMP_DTL_ATLK_INSPECTION_STATUS
+            ,   F.ROWID                             AS EXE_ROWID
+            ,   F.EXE_STATUS                        AS EXE_STATUS
+            ,   DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s') AS TRAN_DATE
+            ,   A.REG_NAME
+            ,   A.REG_OVERLAP_SEND_YN               AS REG_OVERLAP_SEND_YN
+            ,   A.REG_OVERLAP_SEND_TERM             AS REG_OVERLAP_SEND_TERM
+            ,   A.REG_CAMP_TYPE                     AS REG_CAMP_TYPE
+            ,   D.ROWID                             AS TMP_DTL_ROWID
+        FROM    OV_REG_CAMPAIGN_MST     A
+        LEFT OUTER JOIN
+                OV_REG_TEMPLATE_GRP     B
+        ON      A.ROWID = B.CAMP_ROWID
+        LEFT OUTER JOIN
+                OV_TEMPLATE_MST         C
+        ON      A.TEMPLATE_ROWID = C.ROWID
+        LEFT OUTER JOIN
+                OV_TEMPLATE_DTL         D
+        ON      C.ROWID = D.TMP_MST_ROWID
+        <if test='tmpDtlRowid != null and tmpDtlRowid != ""'>
+        AND     D.ROWID= ${tmpDtlRowid}
+        </if>
+        LEFT OUTER JOIN
+                OV_ATLK_PROFILE_MST     E
+        ON      D.TMP_SENDER_ROWID = E.ROWID
+        LEFT OUTER JOIN
+                OV_EXE_CAMPAIGN         F
+        ON      A.ROWID = F.CAMP_ROWID 
+        WHERE   A.REG_STATUS IN ('CAMPAIGN_EXE_COMP', 'CAMPAIGN_EXE_ING')
+        AND     A.REG_DEL_YN = 'N'
+        AND     UPPER(F.EXE_STATUS) IN ('LIVE', 'DELETE', 'STOP')
+        AND     A.ACCT_ROWID = ${sessionUserRowId}
+        <if test='campaignNo != null and campaignNo != ""'>
+            AND     A.REG_CRM_NO = ${campaignNo}
+        </if>
+        <if test='campRowid != null and campRowid != ""'>
+            AND     A.ROWID= ${campRowid}
+        </if>
+        <if test='regCampType == 1'>
+        LIMIT 1
+        </if>
+    </select>
+    
+    <!-- -->
+    <select id="selectRequiredDataList" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.campaign.selectRequiredDataList*/
+        SELECT  A.ROWID                             AS CAMP_ROWID
+            ,   A.ACCT_ROWID                        AS ACCT_ROWID
+            ,   C.ROWID                             AS TEMPLATE_ROWID
+            ,   E.ATLK_SENDER_KEY                   AS ATLK_SENDER_KEY
+            ,   A.TEMPLATE_ROWID                    AS ATLK_TEMPLATE_ROWID
+            ,   D.TMP_DTL_CODE                      AS ATLK_TEMPLATE_CODE
+            ,   A.REG_CRM_NO                        AS CRM_CAMP_NO
+            ,   CASE WHEN D.TMP_DTL_TYPE = 'ATL' THEN
+                    D.TMP_DTL_ATLK_INSPECTION_STATUS
+                ELSE
+                    'APR'
+                END                                 AS TMP_DTL_ATLK_INSPECTION_STATUS
+            ,   F.ROWID                             AS EXE_ROWID
+            ,   F.EXE_STATUS                        AS EXE_STATUS
+            ,   DATE_FORMAT(CURRENT_TIMESTAMP, '%Y-%m-%d %H:%i:%s') AS TRAN_DATE
+            ,   A.REG_NAME
+            ,   A.REG_OVERLAP_SEND_YN               AS REG_OVERLAP_SEND_YN
+            ,   A.REG_OVERLAP_SEND_TERM             AS REG_OVERLAP_SEND_TERM
+            ,   A.REG_CAMP_TYPE                     AS REG_CAMP_TYPE
+            ,   D.ROWID                             AS TMP_DTL_ROWID
+        FROM    OV_REG_CAMPAIGN_MST     A
+        LEFT OUTER JOIN
+                OV_REG_TEMPLATE_GRP     B
+        ON      A.ROWID = B.CAMP_ROWID
+        LEFT OUTER JOIN
+                OV_TEMPLATE_MST         C
+        ON      A.TEMPLATE_ROWID = C.ROWID
+        LEFT OUTER JOIN
+                OV_TEMPLATE_DTL         D
+        ON      C.ROWID = D.TMP_MST_ROWID
+        <if test='tmpDtlRowid != null and tmpDtlRowid != ""'>
+        AND     D.ROWID= ${tmpDtlRowid}
+        </if>
+        LEFT OUTER JOIN
+                OV_ATLK_PROFILE_MST     E
+        ON      D.TMP_SENDER_ROWID = E.ROWID
+        LEFT OUTER JOIN
+                OV_EXE_CAMPAIGN         F
+        ON      A.ROWID = F.CAMP_ROWID 
+        WHERE   A.REG_STATUS IN ('CAMPAIGN_EXE_COMP', 'CAMPAIGN_EXE_ING')
+        AND     A.REG_DEL_YN = 'N'
+        AND     UPPER(F.EXE_STATUS) IN ('LIVE', 'DELETE', 'STOP')
+        AND     A.ACCT_ROWID = ${sessionUserRowId}
+        <if test='campaignNo != null and campaignNo != ""'>
+            AND     A.REG_CRM_NO = ${campaignNo}
+        </if>
+        <if test='campRowid != null and campRowid != ""'>
+            AND     A.ROWID= ${campRowid}
+        </if>
+        <if test='regCampType == 1'>
+        LIMIT 1
+        </if>
+    </select>
+    
+    <!--  -->
+    <select id="selectCampaignMst" parameterType="dataMap" resultType="dataMap">
+        /*enliple.ibot.outviser.front.reg.selectCampaignMst*/
+        SELECT  MST.ROWID
+                ,MST.ACCT_ROWID
+                ,MST.REG_NAME
+                ,MST.REG_MEMO
+                ,MST.REG_STATUS
+                ,MST.REG_CRM_NO
+                ,MST.REG_CAMP_TYPE
+                ,MST.ADDR_GRP_ROWID
+                ,MST.REG_SEND_TIME_TYPE
+                ,MST.REG_SEND_START_DATE
+                ,MST.REG_SEND_START_TIME
+                ,MST.REG_FIXED_TIME_TYPE
+                ,MST.REG_FIXED_TIME_DETAIL_TYPE
+                ,MST.REG_FIXED_TIME_INTERVAL
+                ,MST.REG_FIXED_TIME_WEEK
+                ,MST.REG_END_DATE
+                ,MST.REG_CREATE_DATE
+                ,MST.REG_UPDATE_DATE
+                ,MST.REG_DEL_YN
+                ,MST.REG_OVERLAP_SEND_YN
+                ,MST.REG_OVERLAP_SEND_TERM_YN
+                ,MST.REG_OVERLAP_SEND_TERM
+                ,TGRP.TMP_ROWID AS TEMPLATE_ROWID
+        FROM    OV_REG_CAMPAIGN_MST MST
+        JOIN    (
+                    SELECT 	ROWID
+                            ,CAMP_ROWID
+                            ,TMP_ROWID
+                            ,TMP_USE_TYPE_CODE
+                            ,TMP_SENDER_ROWID
+                            ,TMP_DTL_TYPE
+                    FROM 	OV_REG_TEMPLATE_GRP
+                    WHERE	ROWID IN (	SELECT 	MIN(ROWID)
+                                        FROM 	OV_REG_TEMPLATE_GRP
+                                        GROUP BY CAMP_ROWID )
+                ) TGRP
+        ON      MST.ROWID = TGRP.CAMP_ROWID
+        WHERE   MST.ROWID = #{ROWID}
+    </select>
+    
+    <!--  -->
+    <update id="updateCampaignMstByTemplateRowid" parameterType="dataMap">
+        /*enliple.ibot.outviser.front.reg.updateCampaignMstByTemplateRowid*/
+        UPDATE  OV_REG_CAMPAIGN_MST
+        SET     REG_UPDATE_DATE = NOW()
+                ,REG_STATUS = #{REG_STATUS}
+        WHERE   ROWID IN (
+                            SELECT  CAMP_ROWID
+                            FROM    OV_REG_TEMPLATE_GRP
+                            WHERE   TMP_ROWID = #{TEMPLATE_ROWID}
+                            GROUP BY CAMP_ROWID
+                        )
+        AND     REG_STATUS != #{REG_STATUS}
+    </update>
+    
+</mapper>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper
+	namespace="com.enliple.outviserbatch.outviser.front.shortenUrl.mst.mapper.ShortenUrlMstMapper">
+
+	<!-- -->
+	<select id="selectShortenUrlMstList" resultType="dataMap">
+		/*enliple.ibot.outviser.front.urlshortener2.selectShortenUrlMstList*/
+		SELECT ROWID, MOVE_URL, URL_TYPE, URL_NO
+		FROM OV_SHORTEN_URL_MST
+		WHERE TMP_DTL_ROWID = #{tmpDtlRowid}
+		<if test='urlType != null'>
+			<choose>
+				<when test='urlType == "BTN"'>
+					AND URL_TYPE IN ('BMO', 'BPC')
+				</when>
+				<otherwise>
+					AND URL_TYPE = #{urlType}
+				</otherwise>
+			</choose>
+		</if>
+		<if test='delYn != null and delYn != ""'>
+			AND DEL_YN = #{delYn}
+		</if>
+		ORDER BY URL_NO ASC
+	</select>
+
+</mapper>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+	<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+		<charset>${CHARSET}</charset>
+		<pattern>${PATTERN_CONSOLE}</pattern>
+	</encoder>
+</appender>

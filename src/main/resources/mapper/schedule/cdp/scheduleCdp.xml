@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.schedule.cdp.mapper.ScheduleCdpMapper">
+
+	<!--  -->
+	<update id="insertLog" parameterType="dataMap">
+		insert into OV_CDP_BACKUP_LOG (ADVER_ID, CDP_CAMPIGN_ID, CAMPIGN, RESULT) VALUES (
+			#{adverId}, #{cdpCampignId}, #{campign}, #{resultBackup}
+		);
+	</update>
+
+
+
+	<select id="selectReserveCampaignList" resultType="dataMap">
+		SELECT OAM.ADVER_ID, OEC.*, ORCM.*
+		FROM
+			OV_EXE_CAMPAIGN	AS OEC
+		LEFT JOIN
+			OV_REG_CAMPAIGN_MST AS ORCM
+		ON ORCM.ROWID = OEC.CAMP_ROWID
+		LEFT JOIN
+			OV_ACCT_MST AS OAM
+		ON OAM.ROWID = ORCM.ACCT_ROWID
+		WHERE OEC.EXE_STATUS = 'LIVE'
+		AND ORCM.REG_SEND_START_DATE BETWEEN DATE(NOW()) AND DATE(DATE_ADD(NOW(), INTERVAL 4 DAY))
+		AND ORCM.REG_SEND_TIME_TYPE = 'R'
+		AND ORCM.REG_CRM_NO IS NOT NULL
+		;
+	</select>
+</mapper>

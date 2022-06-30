@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.front.batch.mapper.BatchMapper">
+    
+    <!--  -->
+    <select id="selectBatch" resultType="dataMap">
+        /*enliple.ibot.outviser.schedule.common.batchData*/
+        SELECT  A.ROWID                         AS BATCH_ROWID
+            ,   A.ID
+            ,   A.NAME                          AS BATCH_GROUP_NAME
+            ,   A.BATCH_CODE
+            ,   C.NAME                          AS BATCH_NAME
+            ,   A.ORDERED_SEQ
+            ,   A.ALARM_CODE
+            ,   A.OPERATOR_NAME
+            ,   A.DEVELOPER_NAME
+            ,   FN_DECRYPT(A.OPERATOR_PHONE)    AS OPERATOR_PHONE
+            ,   FN_DECRYPT(A.DEVELOPER_PHONE)   AS DEVELOPER_PHONE
+            ,   A.ACTIVE_START_DATE
+            ,   A.ACTIVE_CLOSE_DATE
+        FROM    OV_BATCH_MST    A
+            ,   OV_CODE_MST     B
+            ,   OV_CODE_DTL     C
+        WHERE   A.ID = '${batchId}'
+        AND     B.MST_CODE = 'BATCH_CODE'
+        AND     B.ROWID = C.MST_ROWID
+        AND     A.BATCH_CODE = C.CODE
+        AND     CASE WHEN A.DEL_YN IS NULL OR A.DEL_YN = '' THEN 'N' ELSE A.DEL_YN END = 'N'
+        AND     NOW() <![CDATA[>=]]> IF(TRIM(ACTIVE_START_DATE) IS NULL OR TRIM(ACTIVE_START_DATE) = '', NOW(), ACTIVE_START_DATE) 
+        AND     NOW() <![CDATA[<=]]> IF(TRIM(ACTIVE_CLOSE_DATE) IS NULL OR TRIM(ACTIVE_CLOSE_DATE) = '', NOW(), ACTIVE_CLOSE_DATE)
+    </select>
+    
+    <!--  -->
+    <select id="runCheckDaily" resultType="long">
+        /*enliple.ibot.outviser.schedule.common.runCheckDaily*/
+        SELECT  NVL(MAX(ROWID), 0) AS ROWID
+        FROM    OV_BATCH_LOG
+        WHERE   START_DATE >= STR_TO_DATE(CONCAT(CURRENT_DATE, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+        AND     REWORK_YN = 'N'
+        AND     BATCH_ROWID = ${batchRowid}
+        AND     PARAMS = '${params}'
+    </select>
+    
+    <!--  -->
+    <insert id="insertLog" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.common.insertLog*/
+        INSERT INTO OV_BATCH_LOG (
+                BATCH_ROWID
+            ,   STATUS
+            ,   PARAMS
+        ) VALUES (
+                ${batchRowid}
+            ,   '${status}'
+            ,   '${params}'
+        )
+        <selectKey resultType="int" keyProperty="logRowid" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    
+    <!--  -->
+    <update id="updateLog" parameterType="dataMap">
+        /*enliple.ibot.outviser.schedule.common.updateLogDaily*/
+        UPDATE  OV_BATCH_LOG
+        SET     BATCH_ROWID = BATCH_ROWID
+        <if test='endYn != null and endYn.equals("Y")'>
+            ,   END_DATE = NOW()
+        </if>
+        <if test='status != null'>
+            ,   STATUS = '${status}'
+        </if>
+        <if test='successYn != null and successYn.equals("Y")'>
+            ,   SUCCESS_YN = '${successYn}'
+        </if>
+        <if test='resultMsg != null'>
+            ,   RESULT_MSG = '${resultMsg}'
+        </if>
+        <if test='params != null'>
+            ,   PARAMS = '${params}'
+        </if>
+        <if test='checkYn != null and checkYn.equals("Y")'>
+            ,   CHECK_YN = '${checkYn}'
+        </if>
+        <if test='checkYn != null and checkYn.equals("Y")'>
+            ,   CHECK_DATE = NOW()
+        </if>
+        <if test='comments != null'>
+            ,   COMMENTS = '${comments}'
+        </if>
+        WHERE   ROWID = ${logRowid}
+    </update>
+    
+</mapper>

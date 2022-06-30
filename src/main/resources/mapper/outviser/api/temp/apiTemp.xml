@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.enliple.outviserbatch.outviser.api.temp.mapper.ApiTempMapper">
+    
+    <!-- -->
+    <insert id="createTempReqData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.createTempReqData*/
+        CREATE TABLE ${tempTableName} (
+                REQ_PHONE_NO    VARCHAR(40)
+            ,   REQ_EMAIL       VARCHAR(400)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8
+    </insert>
+    
+    <!-- -->
+    <insert id="insertTempReqData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.insertTempReqData*/
+        INSERT INTO ${tempTableName} VALUES
+        <foreach collection="datas" item="datas" separator=",">( FN_ENCRYPT(TRIM(REPLACE('${datas.phoneNo}', '-', ''))), FN_ENCRYPT('${datas.email}') )</foreach>
+    </insert>
+    
+    <!-- -->
+    <select id="selectTempReqData" resultType="dataMap" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.selectTempReqData*/
+        WITH    W_LST AS (
+            <choose>
+                <when test='tmpDtlType.equals("EML")'>
+                    SELECT  DISTINCT REQ_EMAIL
+                </when>
+                <otherwise>
+                    SELECT  DISTINCT REQ_PHONE_NO
+                </otherwise>
+            </choose>
+            FROM    ${tempTableName}
+        )
+        SELECT  STRAIGHT_JOIN
+                MAX(B.ROWID)                    AS maxRowid
+            ,   MAX(B.REQ_CREATE_DATE)          AS maxReqCreateDate
+            ,   FN_DECRYPT(B.REQ_PHONE_NO)      AS reqPhoneNo
+            ,   FN_DECRYPT(B.REQ_EMAIL)         AS reqEmail
+            ,   FN_DECRYPT(B.REQ_MESSAGE)       AS reqMessage
+        FROM    OV_REQUEST_SEND A FORCE INDEX (OV_REQUEST_SEND_IDX_02)
+            ,   OV_REQUEST_SEND B
+            ,   W_LST           C
+        WHERE   A.ACCT_ROWID = ${sessionUserRowId}
+        AND     A.CAMP_ROWID = ${campRowid}
+        AND     A.TMP_DTL_ROWID = ${tmpDtlRowid}
+        AND     A.ROWID = B.ROWID
+        <choose>
+            <when test='tmpDtlType.equals("EML")'>
+                AND     B.REQ_EMAIL = C.REQ_EMAIL
+            </when>
+            <otherwise>
+                AND     B.REQ_PHONE_NO = C.REQ_PHONE_NO
+            </otherwise>
+        </choose>
+        <if test='regOverlapSendYn != null and regOverlapSendYn != ""'>
+            <if test='regOverlapSendYn.equals("T")'>
+                <choose>
+                    <when test='regOverlapSendTerm == 0'>
+        AND     B.REQ_CREATE_DATE > NOW()
+                    </when>
+                    <when test='regOverlapSendTerm > 0'>
+        AND     B.REQ_CREATE_DATE > DATE_ADD(CURDATE(), INTERVAL (${regOverlapSendTerm} * -1) DAY)
+                    </when>
+                </choose>
+            </if>
+        </if>
+        GROUP BY
+                FN_DECRYPT(B.REQ_PHONE_NO)
+            ,   FN_DECRYPT(B.REQ_EMAIL)
+            ,   FN_DECRYPT(B.REQ_MESSAGE)
+    </select>
+    
+    <!-- -->
+    <insert id="dropTempReqData" parameterType="java.util.Map">
+        /*enliple.ibot.outviser.api.send.dropTempReqData*/
+        DROP TABLE ${tempTableName}
+    </insert>
+     
+    
+</mapper>
